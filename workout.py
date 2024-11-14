@@ -71,7 +71,7 @@ def generate_chat_response(messages: List[Dict], stream=True) -> str:
     """Generate response using OpenAI's API with streaming support."""
     try:
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4o-mini",
             messages=messages,
             functions=functions,
             function_call="auto",
@@ -165,10 +165,9 @@ if prompt := st.chat_input("Ask me anything about exercises..."):
 with st.sidebar:
     st.header("💡 Tips")
     st.write("""
-    - Ask about specific muscle groups like biceps, chest, or abs
-    - Get exercise recommendations and instructions
-    - Ask for workout tips and form advice
-    - Questions about exercise frequency and intensity
+    - Ask for specific muscle groups like biceps, chest, or abs
+    - Ask for exercise recommendations and instructions
+    - Ask for exercise frequency and intensity
     """)
     
     st.header("🏋️‍♂️ Available Equipment")
