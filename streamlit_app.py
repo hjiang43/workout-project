@@ -1,6 +1,7 @@
 import streamlit as st
 
-st.title("🎈 My new app")
-st.write(
-    "Let's start building! For help and inspiration, head over to [docs.streamlit.io](https://docs.streamlit.io/)."
-)
+workout = st.Page("workout.py", title= "workout")
+
+pg = st.navigation([workout])
+st.set_page_config(page_title="Document", page_icon=":material/edit:")
+pg.run()
