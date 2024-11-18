@@ -40,7 +40,7 @@ client = OpenAI(api_key=st.secrets["API_KEY"])
 API_NINJAS_KEY = st.secrets["API_KEY_N"]
 equipment_data = load_equipment_data()
 
-youtube_api_key = "AIzaSyAeNqdqHlm69Xso60E4aL2c9uKu3yKAcyM"
+youtube_api_key = st.secrets['YT_API_KEY']
 if 'youtube_client' not in st.session_state:
     st.session_state.youtube_client = googleapiclient.discovery.build(
         serviceName = 'youtube',
