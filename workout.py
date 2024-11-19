@@ -1,10 +1,30 @@
 import streamlit as st
 import requests
+import googleapiclient.discovery
 from openai import OpenAI
 from typing import List, Dict
 import pandas as pd
 
 @st.cache_data
+class Search_Result:
+    def __init__(self, search_result) -> None:
+        self.video_id = search_result['id']['videoId']
+        self.title = search_result['snippet']['title']
+        self.description = search_result['snippet']['description']
+        self.thumbnails = search_result['snippet']['thumbnails']['default']['url']
+
+class Search_Response:
+    def __init__(self, search_response) -> None:
+        self.prev_page_token = search_response.get('prevPageToken')
+        self.next_page_token = search_response.get('nextPageToken')
+
+        items = search_response.get('items')
+
+        self.search_results = []
+        for item in items:
+            search_result = Search_Result(item)
+            self.search_results.append(search_result)
+
 def load_equipment_data():
     try:
         df = pd.read_csv('file/workout_equipments.csv')
@@ -19,6 +39,13 @@ if "messages" not in st.session_state:
 client = OpenAI(api_key=st.secrets["API_KEY"])
 API_NINJAS_KEY = st.secrets["API_KEY_N"]
 equipment_data = load_equipment_data()
+
+youtube_api_key = st.secrets['YT_API_KEY']
+if 'youtube_client' not in st.session_state:
+    st.session_state.youtube_client = googleapiclient.discovery.build(
+        serviceName = 'youtube',
+        version = 'v3',
+        developerKey= youtube_api_key)
 
 def get_exercise_info(muscle: str) -> List[Dict]:
     """Fetch exercise information from API Ninjas."""
@@ -44,6 +71,26 @@ def get_equipment_purpose(equipment_name: str) -> str:
         if item["Equipment Name"].lower() == equipment_name.lower():
             return item["Purpose"]
     return "Purpose not found"
+
+def search_yt(query, max_results = 3, page_token = None):
+    yt_request = st.session_state.youtube_client.search().list(
+        part = "snippet", # search by keyword
+        maxResults = max_results, 
+        pageToken = page_token,
+        q = query,
+        videoCaption = 'closedCaption', # Only including videos with caption. 
+        type = 'video'
+    )
+    yt_response = yt_request.execute()
+    search_response = Search_Response(yt_response)
+    return search_response
+
+def display_yt_results(search_response):
+    for search_result in search_response.search_results:
+        #st.write(f'Video ID: {search_result.video_id}')
+        st.write(f'Title: {search_result.title}')
+        st.write(f'Description: {search_result.description}')
+        st.write(f'URL: https://www.youtube.com/watch?v={search_result.video_id}')
 
 functions = [
     {
@@ -132,7 +179,7 @@ if prompt := st.chat_input("Ask me anything about exercises..."):
         exercises = get_exercise_info(muscle_group)
         if exercises:
             exercise_info = "\n".join([
-                f"• {ex['name']}: {ex['instructions'][:100]}..." 
+                f"• {ex['name']}: {ex['instructions'][:100]}...\n Here are some videos:\n{display_yt_results(search_yt(ex))}" 
                 for ex in exercises[:3]
             ])
 
