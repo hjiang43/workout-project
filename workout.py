@@ -5,7 +5,6 @@ from openai import OpenAI
 from typing import List, Dict
 import pandas as pd
 
-@st.cache_data
 class Search_Result:
     def __init__(self, search_result) -> None:
         self.video_id = search_result['id']['videoId']
@@ -24,6 +23,8 @@ class Search_Response:
         for item in items:
             search_result = Search_Result(item)
             self.search_results.append(search_result)
+
+@st.cache_data
 
 def load_equipment_data():
     try:
