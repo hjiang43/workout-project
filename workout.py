@@ -32,11 +32,7 @@ best_practices= '''
     •	Goals shape your workout and nutrition strategy.
     Step 2: Design Your Exercises
     •	Start simple with full-body workouts 2–3 times per week.
-    •	Focus on compound movements (target multiple muscles at once) for efficiency:
-    o	Quads: Squats, lunges.
-    o	Hamstrings/Glutes: Deadlifts, hip raises.
-    o	Push (Chest, Shoulders, Triceps): Push-ups, bench press.
-    o	Pull (Back, Biceps): Pull-ups, rows.
+    •	Focus on compound movements (target multiple muscles at once) for efficiency.
     •	Add isolation exercises as you advance for targeted muscle development.
     Step 3: Sets and Reps
     •	Beginners: 2–5 sets, 5–15 reps per exercise.
@@ -143,7 +139,7 @@ def display_yt_results(search_response):
 functions = [
     {'type': 'function',
      'function':{
-        "name": "recommend_equipment_exercises",
+        "name": "get_exercise_info",
         "description": "Get exercise recommendations based on available equipment",
         "parameters": {
             "type": "object",
@@ -183,11 +179,13 @@ def chat_completion_request(messages,stream=True, tools=None, tool_choice=None, 
         st.write(f"Exception: {e}")
         return e
 
+muscle_group_list = ['biceps', 'triceps', 'quadriceps', 'calves', 'chest', 'hamstrings']
+
 def extract_muscle_group(text: str) -> str:
     """Extract muscle group from user input using OpenAI."""
     try:
         prompt = [
-            {"role": "system", "content": "You are a fitness expert. Extract the muscle group from the following text. Reply with ONLY the muscle group name. If no muscle group is mentioned, reply with 'none'."},
+            {"role": "system", "content": f"You are a fitness expert. Extract the muscle group from the following text. Reply with ONLY the muscle group name from {muscle_group_list}. If no muscle group is mentioned, assign muscle groups."},
             {"role": "user", "content": text}
         ]
         response = client.chat.completions.create(
@@ -210,22 +208,20 @@ for message in st.session_state.messages:
         st.write(message["content"])
 
 if prompt := st.chat_input("Ask me anything about exercises..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-
+    #st.session_state.messages.append({"role": "user", "content": prompt})
+    messages = [
+                {"role": "system", "content": f"You are a knowledgeable and friendly fitness instructor.You have knowledge on exercise tips as well from {best_practices}. Keep responses concise and engaging."},
+                {"role": "user", "content": prompt},
+            ]
+    st.session_state.messages.append(messages)
     with st.chat_message("user"):
         st.write(prompt)
 
 
     # Initial message
-    messages = [
-                {"role": "system", "content": f"""You are a knowledgeable and friendly fitness instructor. 
-                Keep responses concise and engaging."""},
-                {"role": "user", "content": prompt},
-            ]
-    
-    response = chat_completion_request(messages, stream = False, tools = functions, tool_choice="auto")
+    response = chat_completion_request(st.session_state.messages, stream = False, tools = functions, tool_choice="auto")
     #st.write(response)
-
+    st.write(response)
     response_message = response.choices[0].message
 
     # Call tool if tools needds to be called
@@ -239,26 +235,48 @@ if prompt := st.chat_input("Ask me anything about exercises..."):
         tool_function_name = tool_calls[0].function.name
 
         if tool_function_name == 'get_tips':
-            useful_info = best_practices
+            tool_response = best_practices
+        elif tool_function_name == 'get_exercise_info':
+            muscle_group = extract_muscle_group(prompt)
+            tool_response = ""
+            for muscle in muscle_group:
+                exercises = get_exercise_info(muscle)
+                exercise_info = ""
+                for ex in exercises[:3]:
+                    exercise_info.join(f"{ex['name']}: {ex['instructions'][:100]}...\n Here are some videos:\n{display_yt_results(search_yt(ex['name']))}\n")
+                tool_response.join(exercise_info)
         else:
             st.write(f'Error: function {tool_function_name} does not exist')
+
+        st.session_state.messages.append({'role':'tool', 
+                                 'tool_call_id':tool_call_id,
+                                 'name':tool_function_name,
+                                 'content':tool_response})
+        
+        response_w_function = client.chat.completions.create(
+            model = "gpt-4o-mini",
+            messages = st.session_state.messages
+        )
+        st.session_state.messages.append({'role': 'assistant',
+                                          'content':response_w_function.choices[0].message.content})
     else:
         useful_info = ''
     # -----
 
     #st.write(useful_info)
-
+    '''
     # This deletes the conversation history
     muscle_group = extract_muscle_group(prompt)
-
+    st.write(get_exercise_info(prompt))
+    st.write(muscle_group)
     if muscle_group != "none":
         exercises = get_exercise_info(muscle_group)
         if exercises:
             exercise_info = "\n".join([
-                f"• {ex['name']}: {ex['instructions'][:100]}...\n Here are some videos:\n{display_yt_results(search_yt(ex))}" 
+                f"• {ex['name']}: {ex['instructions'][:100]}...\n Here are some videos:\n{display_yt_results(search_yt(ex['name']))}" 
                 for ex in exercises[:3]
             ])
-
+            #st.write(exercises)
             messages = [
                 {"role": "system", "content": f"""You are a knowledgeable and friendly fitness instructor. 
                 Available equipment: {', '.join(get_available_equipment())}. 
@@ -283,15 +301,17 @@ if prompt := st.chat_input("Ask me anything about exercises..."):
             useful info: {useful_info}"""},
             {"role": "user", "content": prompt}
         ]
-
-
-
-
+    '''
+    st.session_state.messages.append(messages)
+    st.write(st.session_state.messages)
 
     with st.chat_message("assistant"):
-        response = chat_completion_request(messages)
+        response = chat_completion_request(st.session_state.messages)
         st.write(response)
         st.session_state.messages.append({"role": "assistant", "content": response})
+        
+    st.write(st.session_state.messages)
+
 
 with st.sidebar:
     st.header("💡 Tips")
