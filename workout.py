@@ -89,7 +89,7 @@ def get_exercise_info(muscle) -> List[Dict]:
     """Fetch exercise information from API Ninjas."""
     url = "https://api.api-ninjas.com/v1/exercises"
     headers = {"X-Api-Key": API_NINJAS_KEY}
-    params = {"muscle": muscle.lower()}
+    params = {"muscle": muscle.lower(), "difficulty":'beginner'}
 
     try:
         response = requests.get(url, headers=headers, params=params)
@@ -119,7 +119,7 @@ def search_yt(query, max_results = 1, page_token = None): # I changed max result
         part = "snippet", # search by keyword
         maxResults = max_results, 
         pageToken = page_token,
-        q = query+' form', # I changed this
+        q = query + ' form', # I changed this
 
         videoCaption = 'closedCaption', # Only including videos with caption. 
         type = 'video'
@@ -184,26 +184,26 @@ def extract_muscle_group(text: str) -> list:
 
 # ----- Define Tools -----
 tools = [
-    {'type': 'function',
-     'function':{
-        "name": "recommend_equipment_exercises",
-        "description": "Get exercise recommendations based on available equipment",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "equipment": {
-                    "type": "string",
-                    "description": "The exercise equipment to use",
-                    "enum": get_available_equipment()
-                },
-                "muscle_group": {
-                    "type": "string",
-                    "description": "Target muscle group for the exercise"
-                }
-            },
-            "required": ["equipment", "muscle_group"]
-        }
-    }},
+    # {'type': 'function',
+    #  'function':{
+    #     "name": "recommend_equipment_exercises",
+    #     "description": "Get exercise recommendations based on available equipment",
+    #     "parameters": {
+    #         "type": "object",
+    #         "properties": {
+    #             "equipment": {
+    #                 "type": "string",
+    #                 "description": "The exercise equipment to use",
+    #                 "enum": get_available_equipment()
+    #             },
+    #             "muscle_group": {
+    #                 "type": "string",
+    #                 "description": "Target muscle group for the exercise"
+    #             }
+    #         },
+    #         "required": ["equipment", "muscle_group"]
+    #     }
+    # }},
     {'type' : 'function',
      'function':{
         "name": "get_tips",
@@ -238,6 +238,7 @@ if prompt := st.chat_input("Ask me anything about exercises..."):
     st.chat_message("user").write(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
 
+
     # conversation history buffer (maybe later)
     messages_to_pass = st.session_state.messages.copy()
 
@@ -267,7 +268,7 @@ if prompt := st.chat_input("Ask me anything about exercises..."):
         else:
             st.write(f'Error: function {tool_function_name} does not exist')
     else:
-        tips_info = ''
+        tips_info = " "
 
     #st.write('tips info:'+tips_info) # test
 
@@ -279,12 +280,12 @@ if prompt := st.chat_input("Ask me anything about exercises..."):
     for muscle_group in muscle_group_list:
         exercises = get_exercise_info(muscle_group)
         #st.write(exercises)
-        for ex in exercises[:1]:
+        for ex in exercises[:3]:
             name = ex['name']
             difficulty = ex['difficulty']
             equipment = ex['equipment']
-            #exercise_info[name]= f"difficulty: {difficulty}, equipment needed: {equipment}, Here are some instructional videos:\n{get_yt_info(search_yt(name))}"
-            exercise_info[name]= f"difficulty: {difficulty}, equipment needed: {equipment}, type {ex['type']}, Here are some instructional videos:\n"
+            exercise_info[name]= f"difficulty: {difficulty}, equipment needed: {equipment}, Here are some instructional videos:\n{get_yt_info(search_yt(name))}"
+            #exercise_info[name]= f"difficulty: {difficulty}, equipment needed: {equipment}, type {ex['type']}, Here are some instructional videos:\n"
             #st.write(get_yt_info(search_yt(name))) # test
 
 
@@ -299,7 +300,7 @@ if prompt := st.chat_input("Ask me anything about exercises..."):
                 useful exercise info: {exercise_info}
                 """}
 
-    messages_to_pass.pop(0)
+    messages_to_pass.pop(0) # deleating the first SM
     messages_to_pass.insert(0,system_message)
     st.write(messages_to_pass)
 
