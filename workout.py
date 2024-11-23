@@ -5,27 +5,8 @@ from openai import OpenAI
 from typing import List, Dict
 import pandas as pd
 
-class Search_Result:
-    def __init__(self, search_result) -> None:
-        self.video_id = search_result['id']['videoId']
-        self.title = search_result['snippet']['title']
-        self.description = search_result['snippet']['description']
-        self.thumbnails = search_result['snippet']['thumbnails']['default']['url']
-
-class Search_Response:
-    def __init__(self, search_response) -> None:
-        self.prev_page_token = search_response.get('prevPageToken')
-        self.next_page_token = search_response.get('nextPageToken')
-
-        items = search_response.get('items')
-
-        self.search_results = []
-        for item in items:
-            search_result = Search_Result(item)
-            self.search_results.append(search_result)
-
 best_practices= '''
-    This guide provides a step-by-step approach to creating an effective workout plan tailored to your goals, whether you aim to lose weight, build muscle, or improve endurance. Here's a summary with key details:
+    This guide provides a step-by-step approach to creating an effective workout:
     Step 1: Define Your Goals
     •	Weight Loss: Aim for a calorie deficit (0.5–1% of body weight per week).
     •	Muscle Gain: Aim for a calorie surplus (0.25–0.5% of body weight per week).
@@ -71,8 +52,31 @@ best_practices= '''
     4.	Stretch after workouts to improve flexibility and recovery.
 '''
 
+# Define Classes
+class Search_Result:
+    def __init__(self, search_result) -> None:
+        self.video_id = search_result['id']['videoId']
+        self.title = search_result['snippet']['title']
+        self.description = search_result['snippet']['description']
+        self.thumbnails = search_result['snippet']['thumbnails']['default']['url']
+
+class Search_Response:
+    def __init__(self, search_response) -> None:
+        self.prev_page_token = search_response.get('prevPageToken')
+        self.next_page_token = search_response.get('nextPageToken')
+
+        items = search_response.get('items')
+
+        self.search_results = []
+        for item in items:
+            search_result = Search_Result(item)
+            self.search_results.append(search_result)
+
 @st.cache_data
 
+
+
+# ----- Create Functions -----
 def load_equipment_data():
     try:
         df = pd.read_csv('file/workout_equipments.csv')
@@ -81,25 +85,11 @@ def load_equipment_data():
         st.error(f"Error loading equipment data: {str(e)}")
         return []
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-
-client = OpenAI(api_key=st.secrets["API_KEY"])
-API_NINJAS_KEY = st.secrets["API_KEY_N"]
-equipment_data = load_equipment_data()
-
-youtube_api_key = st.secrets['YT_API_KEY']
-if 'youtube_client' not in st.session_state:
-    st.session_state.youtube_client = googleapiclient.discovery.build(
-        serviceName = 'youtube',
-        version = 'v3',
-        developerKey= youtube_api_key)
-
-def get_exercise_info(muscle: str) -> List[Dict]:
+def get_exercise_info(muscle) -> List[Dict]:
     """Fetch exercise information from API Ninjas."""
     url = "https://api.api-ninjas.com/v1/exercises"
     headers = {"X-Api-Key": API_NINJAS_KEY}
-    params = {"muscle": muscle.lower()}
+    params = {"muscle": muscle.lower(), "difficulty":'intermediate'} # this should be a dropdown
 
     try:
         response = requests.get(url, headers=headers, params=params)
@@ -120,12 +110,17 @@ def get_equipment_purpose(equipment_name: str) -> str:
             return item["Purpose"]
     return "Purpose not found"
 
-def search_yt(query, max_results = 3, page_token = None):
+# Load equipments data
+equipment_data = load_equipment_data()
+#print(equipment_data) # check
+
+def search_yt(query, max_results = 1, page_token = None): # I changed max results
     yt_request = st.session_state.youtube_client.search().list(
         part = "snippet", # search by keyword
         maxResults = max_results, 
         pageToken = page_token,
-        q = query,
+        q = query + ' form', # I changed this
+
         videoCaption = 'closedCaption', # Only including videos with caption. 
         type = 'video'
     )
@@ -140,33 +135,11 @@ def display_yt_results(search_response):
         st.write(f'Description: {search_result.description}')
         st.write(f'URL: https://www.youtube.com/watch?v={search_result.video_id}')
 
-functions = [
-    {'type': 'function',
-     'function':{
-        "name": "recommend_equipment_exercises",
-        "description": "Get exercise recommendations based on available equipment",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "equipment": {
-                    "type": "string",
-                    "description": "The exercise equipment to use",
-                    "enum": get_available_equipment()
-                },
-                "muscle_group": {
-                    "type": "string",
-                    "description": "Target muscle group for the exercise"
-                }
-            },
-            "required": ["equipment", "muscle_group"]
-        }
-    }},
-    {'type' : 'function',
-     'function':{
-        "name": "get_tips",
-        "description": "Get best practices of creating a workout including exercises, sets, reps, reps, duration, frequency, etc."
-    }}
-]
+def get_yt_info(search_response):
+    for search_result in search_response.search_results:
+        result = f'Title: {search_result.title}. URL: https://www.youtube.com/watch?v={search_result.video_id}'
+        return result
+    
 
 def chat_completion_request(messages,stream=True, tools=None, tool_choice=None, model='gpt-4o-mini'):
     try:
@@ -183,115 +156,165 @@ def chat_completion_request(messages,stream=True, tools=None, tool_choice=None, 
         st.write(f"Exception: {e}")
         return e
 
-def extract_muscle_group(text: str) -> str:
+
+def extract_muscle_group(text: str) -> list:
     """Extract muscle group from user input using OpenAI."""
     try:
         prompt = [
-            {"role": "system", "content": "You are a fitness expert. Extract the muscle group from the following text. Reply with ONLY the muscle group name. If no muscle group is mentioned, reply with 'none'."},
+            {"role": "system", "content": '''
+            ONLY Assign one or more muscles groups. 
+            The only possible muscles groups are: "abdominals, abductors, adductors, biceps, calves, chest, forearms, glutes, hamstrings, lats, lower_back, middle_back, neck, quadriceps, traps, triceps".
+            Return the muscle groups separated by a space, for example: "biceps triceps" or "chest".
+            If you cannot assign any muscle groups return nothing ''            
+            '''},
             {"role": "user", "content": text}
         ]
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4o-mini",
             messages=prompt,
-            max_tokens=50,
             temperature=0,
             stream=False
         )
-        return response.choices[0].message.content.lower()
+        # Convert the space-separated string into a list
+        muscle_groups = response.choices[0].message.content.lower().split()
+        return [group for group in muscle_groups if group]  # Ensure no empty strings
     except Exception:
         return "none"
-    
 
-st.title("💪 WorkoutBot(Maybe some better name)")
+
+# ----- Define Tools -----
+tools = [
+    # {'type': 'function',
+    #  'function':{
+    #     "name": "recommend_equipment_exercises",
+    #     "description": "Get exercise recommendations based on available equipment",
+    #     "parameters": {
+    #         "type": "object",
+    #         "properties": {
+    #             "equipment": {
+    #                 "type": "string",
+    #                 "description": "The exercise equipment to use",
+    #                 "enum": get_available_equipment()
+    #             },
+    #             "muscle_group": {
+    #                 "type": "string",
+    #                 "description": "Target muscle group for the exercise"
+    #             }
+    #         },
+    #         "required": ["equipment", "muscle_group"]
+    #     }
+    # }},
+    {'type' : 'function',
+     'function':{
+        "name": "get_tips",
+        "description": "Get best practices of creating a workout and exercising in general including exercises, sets, reps, duration, frequency, etc."
+    }}
+]
+
+
+st.title("💪 WorkoutBot")
 st.write("Chat with me about exercises! I can help you find exercises for specific muscle groups and provide detailed instructions.")
 
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.write(message["content"])
+client = OpenAI(api_key=st.secrets["API_KEY"])
+API_NINJAS_KEY = st.secrets["API_KEY_N"]
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+
+youtube_api_key = st.secrets['YT_API_KEY']
+if 'youtube_client' not in st.session_state:
+    st.session_state.youtube_client = googleapiclient.discovery.build(
+        serviceName = 'youtube',
+        version = 'v3',
+        developerKey= youtube_api_key)
+
+
+
+for msg in st.session_state.messages:
+    st.chat_message(msg['role']).write(msg['content'])
 
 if prompt := st.chat_input("Ask me anything about exercises..."):
+    st.chat_message("user").write(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
 
-    with st.chat_message("user"):
-        st.write(prompt)
 
+    # conversation history buffer (maybe later)
+    messages_to_pass = st.session_state.messages.copy()
 
-    # Initial message
-    messages = [
-                {"role": "system", "content": f"""You are a knowledgeable and friendly fitness instructor. 
-                Keep responses concise and engaging."""},
-                {"role": "user", "content": prompt},
-            ]
-    
-    response = chat_completion_request(messages, stream = False, tools = functions, tool_choice="auto")
-    #st.write(response)
+    system_message = {'role':'system',
+                'content':\
+                f"""
+                You are a knowledgeable and friendly fitness instructor. 
+                Keep responses concise and engaging.
+                """}
 
+    messages_to_pass.insert(0,system_message)
+
+    # first llm call
+    response = chat_completion_request(messages_to_pass, stream = False, tools = tools, tool_choice="auto")
     response_message = response.choices[0].message
 
     # Call tool if tools needds to be called
     tool_calls = response_message.tool_calls
-
-    # ------
-    #st.write(response_message) # test
+    #st.write(tool_calls)
     if tool_calls:
         # If true the model will return the name of the tool / function to call and the arguments
         tool_call_id = tool_calls[0].id
         tool_function_name = tool_calls[0].function.name
 
         if tool_function_name == 'get_tips':
-            useful_info = best_practices
+            tips_info = best_practices
         else:
             st.write(f'Error: function {tool_function_name} does not exist')
     else:
-        useful_info = ''
-    # -----
+        tips_info = " "
 
-    #st.write(useful_info)
+    #st.write('tips info:'+tips_info) # test
 
-    # This deletes the conversation history
-    muscle_group = extract_muscle_group(prompt)
+    muscle_group_list = extract_muscle_group(prompt)
+    st.write( muscle_group_list) # test
 
-    if muscle_group != "none":
+    # Get exercise information
+    exercise_info = {}
+    for muscle_group in muscle_group_list:
         exercises = get_exercise_info(muscle_group)
-        if exercises:
-            exercise_info = "\n".join([
-                f"• {ex['name']}: {ex['instructions'][:100]}...\n Here are some videos:\n{display_yt_results(search_yt(ex))}" 
-                for ex in exercises[:3]
-            ])
+        #st.write(exercises)
+        for ex in exercises[:3]:
+            name = ex['name']
+            difficulty = ex['difficulty']
+            equipment = ex['equipment']
+            #exercise_info[name]= f"difficulty: {difficulty}, equipment needed: {equipment}, Here are some instructional videos:\n{get_yt_info(search_yt(name))}"
+            exercise_info[name]= f"difficulty: {difficulty}, equipment needed: {equipment}, type {ex['type']}, Here are some instructional videos:\n"
+            #st.write(get_yt_info(search_yt(name))) # test
 
-            messages = [
-                {"role": "system", "content": f"""You are a knowledgeable and friendly fitness instructor. 
-                Available equipment: {', '.join(get_available_equipment())}. 
-                Provide helpful, encouraging advice about exercises and suggest exercises using available equipment. 
+
+    system_message = {'role':'system',
+                'content':\
+                f"""
+                You are a knowledgeable and friendly fitness instructor. 
                 Keep responses concise and engaging.
-                useful info: {useful_info}"""},
-                {"role": "user", "content": prompt},
-                {"role": "assistant", "content": f"I found some exercises for {muscle_group}. Here are the details:\n{exercise_info}"}
-            ]
-        else:
-            messages = [
-                {"role": "system", "content": f"""You are a knowledgeable and friendly fitness instructor.
-                Available equipment: {', '.join(get_available_equipment())}.
-                useful info: {useful_info}"""},
-                {"role": "user", "content": prompt},
-                {"role": "assistant", "content": f"While I couldn't find specific exercises for {muscle_group} in my database, I can provide general fitness advice based on our available equipment."}
-            ]
-    else:
-        messages = [
-            {"role": "system", "content": f"""You are a knowledgeable and friendly fitness instructor.
-            Available equipment: {', '.join(get_available_equipment())}.
-            useful info: {useful_info}"""},
-            {"role": "user", "content": prompt}
-        ]
+
+                Available equipment: {', '.join(get_available_equipment())}. 
+                useful tips to generate workouts: {tips_info}
+                useful exercise info: {exercise_info}
+
+                """}
+
+    messages_to_pass.pop(0) # deleating the first SM
+    messages_to_pass.insert(0,system_message)
+    st.write(messages_to_pass)
+
+    # Get stream response
+    stream = chat_completion_request(messages_to_pass)
+
+    # Write Stream
+    with st.chat_message('assistant'):
+        responses = st.write_stream(stream)
+    # Append Messages.
+    st.session_state.messages.append({'role':'assistant','content':responses})
 
 
-
-
-
-    with st.chat_message("assistant"):
-        response = chat_completion_request(messages)
-        st.write(response)
-        st.session_state.messages.append({"role": "assistant", "content": response})
 
 with st.sidebar:
     st.header("💡 Tips")
@@ -304,3 +327,20 @@ with st.sidebar:
     st.header("🏋️‍♂️ Available Equipment")
     equipment_df = pd.DataFrame(equipment_data)
     st.dataframe(equipment_df, hide_index=True)
+
+
+
+
+
+# # Change logs
+# - search_yt: I changed the max results to 1 and changed the query to + form
+# - get_yt_info: to get the info from the videos, title and url as string
+# - extract_muscle_group: now returns a list of muscle groups
+
+# # things to talk about
+# - Get available equipment function to tools
+# - delete "recommend_equipment_exercises" from tools. it is not used
+# - change functions to tool calls (extract muscle group, get exercise info)
+# - Query the ninja API with other parameters like type or difficulty
+# - Do the YT api call only for the final exercises, not for all of the ninja api ex. 
+# - conversation history
