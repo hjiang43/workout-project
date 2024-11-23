@@ -13,7 +13,11 @@ best_practices= '''
     •	Goals shape your workout and nutrition strategy.
     Step 2: Design Your Exercises
     •	Start simple with full-body workouts 2–3 times per week.
-    •	Focus on compound movements (target multiple muscles at once) for efficiency.
+    •	Focus on compound movements (target multiple muscles at once) for efficiency:
+    o	Quads: Squats, lunges.
+    o	Hamstrings/Glutes: Deadlifts, hip raises.
+    o	Push (Chest, Shoulders, Triceps): Push-ups, bench press.
+    o	Pull (Back, Biceps): Pull-ups, rows.
     •	Add isolation exercises as you advance for targeted muscle development.
     Step 3: Sets and Reps
     •	Beginners: 2–5 sets, 5–15 reps per exercise.
@@ -263,18 +267,6 @@ if prompt := st.chat_input("Ask me anything about exercises..."):
             tips_info = best_practices
         else:
             st.write(f'Error: function {tool_function_name} does not exist')
-
-        st.session_state.messages.append({'role':'tool', 
-                                 'tool_call_id':tool_call_id,
-                                 'name':tool_function_name,
-                                 'content':tool_response})
-        
-        response_w_function = client.chat.completions.create(
-            model = "gpt-4o-mini",
-            messages = st.session_state.messages
-        )
-        st.session_state.messages.append({'role': 'assistant',
-                                          'content':response_w_function.choices[0].message.content})
     else:
         tips_info = " "
 
