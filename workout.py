@@ -89,7 +89,7 @@ def get_exercise_info(muscle) -> List[Dict]:
     """Fetch exercise information from API Ninjas."""
     url = "https://api.api-ninjas.com/v1/exercises"
     headers = {"X-Api-Key": API_NINJAS_KEY}
-    params = {"muscle": muscle.lower(), "difficulty":'beginner'}
+    params = {"muscle": muscle.lower(), "difficulty":'intermediate'} # this should be a dropdown
 
     try:
         response = requests.get(url, headers=headers, params=params)
@@ -284,8 +284,8 @@ if prompt := st.chat_input("Ask me anything about exercises..."):
             name = ex['name']
             difficulty = ex['difficulty']
             equipment = ex['equipment']
-            exercise_info[name]= f"difficulty: {difficulty}, equipment needed: {equipment}, Here are some instructional videos:\n{get_yt_info(search_yt(name))}"
-            #exercise_info[name]= f"difficulty: {difficulty}, equipment needed: {equipment}, type {ex['type']}, Here are some instructional videos:\n"
+            #exercise_info[name]= f"difficulty: {difficulty}, equipment needed: {equipment}, Here are some instructional videos:\n{get_yt_info(search_yt(name))}"
+            exercise_info[name]= f"difficulty: {difficulty}, equipment needed: {equipment}, type {ex['type']}, Here are some instructional videos:\n"
             #st.write(get_yt_info(search_yt(name))) # test
 
 
@@ -298,6 +298,7 @@ if prompt := st.chat_input("Ask me anything about exercises..."):
                 Available equipment: {', '.join(get_available_equipment())}. 
                 useful tips to generate workouts: {tips_info}
                 useful exercise info: {exercise_info}
+
                 """}
 
     messages_to_pass.pop(0) # deleating the first SM
@@ -326,6 +327,9 @@ with st.sidebar:
     st.header("🏋️‍♂️ Available Equipment")
     equipment_df = pd.DataFrame(equipment_data)
     st.dataframe(equipment_df, hide_index=True)
+
+
+
 
 
 # # Change logs
