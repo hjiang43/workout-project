@@ -140,7 +140,6 @@ def get_yt_info(search_response):
         result = f'Title: {search_result.title}. URL: https://www.youtube.com/watch?v={search_result.video_id}'
         return result
     
-
 def chat_completion_request(messages,stream=True, tools=None, tool_choice=None, model='gpt-4o-mini'):
     try:
         response = client.chat.completions.create(
@@ -181,6 +180,28 @@ def extract_muscle_group(text: str) -> list:
     except Exception:
         return "none"
 
+
+def extract_exercises(text: str) -> list:
+    """Extract muscle group from user input using OpenAI."""
+    try:
+        prompt = [
+            {"role": "system", "content": '''
+            from the text provided, extract the exercises and only extract the exercises. 
+            for example, if a text says, "Here are some good workouts, barbell curls, farmer's carry and Pull Ups", your output should look like this: "barbell curls, farmer's carry, Pull Ups"            
+            '''},
+            {"role": "user", "content": text}
+        ]
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=prompt,
+            temperature=0,
+            stream=False
+        )
+        # Convert the space-separated string into a list
+        exercises = response.choices[0].message.content.lower().split(', ')
+        return [group for group in exercises if group]  # Ensure no empty strings
+    except Exception:
+        return "none"
 
 # ----- Define Tools -----
 tools = [
@@ -253,6 +274,7 @@ if prompt := st.chat_input("Ask me anything about exercises..."):
 
     # first llm call
     response = chat_completion_request(messages_to_pass, stream = False, tools = tools, tool_choice="auto")
+    st.write(response)
     response_message = response.choices[0].message
 
     # Call tool if tools needds to be called
@@ -299,6 +321,7 @@ if prompt := st.chat_input("Ask me anything about exercises..."):
                 useful tips to generate workouts: {tips_info}
                 useful exercise info: {exercise_info}
 
+                For each exercise you provide youtube videos from {get_yt_info(search_yt(name))}. Repeat this for each and every exercise. 
                 """}
 
     messages_to_pass.pop(0) # deleating the first SM
@@ -306,6 +329,19 @@ if prompt := st.chat_input("Ask me anything about exercises..."):
     st.write(messages_to_pass)
 
     # Get stream response
+    stream = chat_completion_request(messages_to_pass, stream = False)
+
+    workouts = extract_exercises(stream.choices[0].message.content)
+    yt_urls = []
+    for exercise in workouts:
+        yt_urls.append(get_yt_info(search_yt(exercise)))
+
+    messages_to_pass.append({'role': 'system', 'content':f'''
+                Youtube Links for exercises recommended: {yt_urls}
+                Apply this to the workouts you recommend.                                      
+'''})
+    st.write(workouts)
+
     stream = chat_completion_request(messages_to_pass)
 
     # Write Stream
@@ -314,7 +350,7 @@ if prompt := st.chat_input("Ask me anything about exercises..."):
     # Append Messages.
     st.session_state.messages.append({'role':'assistant','content':responses})
 
-
+    #st.write(st.session_state.messages[-1]['content'])
 
 with st.sidebar:
     st.header("💡 Tips")
