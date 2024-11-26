@@ -85,11 +85,11 @@ def load_equipment_data():
         st.error(f"Error loading equipment data: {str(e)}")
         return []
 
-def get_exercise_info(muscle) -> List[Dict]:
+def get_exercise_info(muscle, workout_type = None, difficulty = None) -> List[Dict]:
     """Fetch exercise information from API Ninjas."""
     url = "https://api.api-ninjas.com/v1/exercises"
     headers = {"X-Api-Key": API_NINJAS_KEY}
-    params = {"muscle": muscle.lower(), "difficulty":'intermediate'} # this should be a dropdown
+    params = {"muscle": muscle.lower(), 'type':workout_type.lower(), "difficulty":difficulty.lower()} # this should be a dropdown
 
     try:
         response = requests.get(url, headers=headers, params=params)
@@ -140,7 +140,6 @@ def get_yt_info(search_response):
         result = f'Title: {search_result.title}. URL: https://www.youtube.com/watch?v={search_result.video_id}'
         return result
     
-
 def chat_completion_request(messages,stream=True, tools=None, tool_choice=None, model='gpt-4o-mini'):
     try:
         response = client.chat.completions.create(
@@ -156,16 +155,16 @@ def chat_completion_request(messages,stream=True, tools=None, tool_choice=None, 
         st.write(f"Exception: {e}")
         return e
 
-
+muscles = ["abdominals, abductors, adductors, biceps, calves, chest, forearms, glutes, hamstrings, lats, lower_back, middle_back, neck, quadriceps, traps, triceps"]
 def extract_muscle_group(text: str) -> list:
     """Extract muscle group from user input using OpenAI."""
     try:
         prompt = [
-            {"role": "system", "content": '''
+            {"role": "system", "content": f'''
             ONLY Assign one or more muscles groups. 
-            The only possible muscles groups are: "abdominals, abductors, adductors, biceps, calves, chest, forearms, glutes, hamstrings, lats, lower_back, middle_back, neck, quadriceps, traps, triceps".
+            The only possible muscles groups are:{muscles}
             Return the muscle groups separated by a space, for example: "biceps triceps" or "chest".
-            If you cannot assign any muscle groups return nothing ''            
+            If you cannot assign any muscle groups return "Exercises for that muscle group does not exist in this database"            
             '''},
             {"role": "user", "content": text}
         ]
@@ -179,8 +178,30 @@ def extract_muscle_group(text: str) -> list:
         muscle_groups = response.choices[0].message.content.lower().split()
         return [group for group in muscle_groups if group]  # Ensure no empty strings
     except Exception:
-        return "none"
+        return "Exercises for that muscle group does not exist"
 
+
+def extract_exercises(text: str) -> list:
+    """Extract muscle group from user input using OpenAI."""
+    try:
+        prompt = [
+            {"role": "system", "content": '''
+            from the text provided, extract the exercises and only extract the exercises. 
+            for example, if a text says, "Here are some good workouts, barbell curls, farmer's carry and Pull Ups", your output should look like this: "barbell curls, farmer's carry, Pull Ups"            
+            '''},
+            {"role": "user", "content": text}
+        ]
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=prompt,
+            temperature=0,
+            stream=False
+        )
+        # Convert the space-separated string into a list
+        exercises = response.choices[0].message.content.lower().split(', ')
+        return [group for group in exercises if group]  # Ensure no empty strings
+    except Exception:
+        return "none"
 
 # ----- Define Tools -----
 tools = [
@@ -214,121 +235,142 @@ tools = [
 
 st.title("💪 WorkoutBot")
 st.write("Chat with me about exercises! I can help you find exercises for specific muscle groups and provide detailed instructions.")
-
+difficulty = st.selectbox("Select your level of Experience", 
+                          ['None', 'beginner', 'intermediate', 'expert'], 
+                          placeholder = 'None')
+workout_type = st.selectbox("Select the type of workout", 
+                            ['None', 'cardio', 'olympic_weightlifting', 'plyometrics', 'powerlifting', 'strength', 'stretching', 'strongman'], 
+                            placeholder = 'None')
 client = OpenAI(api_key=st.secrets["API_KEY"])
 API_NINJAS_KEY = st.secrets["API_KEY_N"]
 
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+if difficulty != 'None' and workout_type != 'None':
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
 
 
-youtube_api_key = st.secrets['YT_API_KEY']
-if 'youtube_client' not in st.session_state:
-    st.session_state.youtube_client = googleapiclient.discovery.build(
-        serviceName = 'youtube',
-        version = 'v3',
-        developerKey= youtube_api_key)
+    youtube_api_key = st.secrets['YT_API_KEY']
+    if 'youtube_client' not in st.session_state:
+        st.session_state.youtube_client = googleapiclient.discovery.build(
+            serviceName = 'youtube',
+            version = 'v3',
+            developerKey= youtube_api_key)
 
 
 
-for msg in st.session_state.messages:
-    st.chat_message(msg['role']).write(msg['content'])
+    for msg in st.session_state.messages:
+        st.chat_message(msg['role']).write(msg['content'])
 
-if prompt := st.chat_input("Ask me anything about exercises..."):
-    st.chat_message("user").write(prompt)
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    if prompt := st.chat_input("Ask me anything about exercises..."):
+        st.chat_message("user").write(prompt)
+        st.session_state.messages.append({"role": "user", "content": prompt})
 
 
-    # conversation history buffer (maybe later)
-    messages_to_pass = st.session_state.messages.copy()
+        # conversation history buffer (maybe later)
+        messages_to_pass = st.session_state.messages.copy()
 
-    system_message = {'role':'system',
-                'content':\
-                f"""
-                You are a knowledgeable and friendly fitness instructor. 
-                Keep responses concise and engaging.
-                """}
+        system_message = {'role':'system',
+                    'content':\
+                    f"""
+                    You are a knowledgeable and friendly fitness instructor. 
+                    Keep responses concise and engaging.
+                    """}
 
-    messages_to_pass.insert(0,system_message)
+        messages_to_pass.insert(0,system_message)
 
-    # first llm call
-    response = chat_completion_request(messages_to_pass, stream = False, tools = tools, tool_choice="auto")
-    response_message = response.choices[0].message
+        # first llm call
+        response = chat_completion_request(messages_to_pass, stream = False, tools = tools, tool_choice="auto")
+        st.write(response)
+        response_message = response.choices[0].message
 
-    # Call tool if tools needds to be called
-    tool_calls = response_message.tool_calls
-    #st.write(tool_calls)
-    if tool_calls:
-        # If true the model will return the name of the tool / function to call and the arguments
-        tool_call_id = tool_calls[0].id
-        tool_function_name = tool_calls[0].function.name
+        # Call tool if tools needds to be called
+        tool_calls = response_message.tool_calls
+        #st.write(tool_calls)
+        if tool_calls:
+            # If true the model will return the name of the tool / function to call and the arguments
+            tool_call_id = tool_calls[0].id
+            tool_function_name = tool_calls[0].function.name
 
-        if tool_function_name == 'get_tips':
-            tips_info = best_practices
+            if tool_function_name == 'get_tips':
+                tips_info = best_practices
+            else:
+                st.write(f'Error: function {tool_function_name} does not exist')
         else:
-            st.write(f'Error: function {tool_function_name} does not exist')
-    else:
-        tips_info = " "
+            tips_info = " "
 
-    #st.write('tips info:'+tips_info) # test
+        #st.write('tips info:'+tips_info) # test
 
-    muscle_group_list = extract_muscle_group(prompt)
-    st.write( muscle_group_list) # test
-
-    # Get exercise information
-    exercise_info = {}
-    for muscle_group in muscle_group_list:
-        exercises = get_exercise_info(muscle_group)
-        #st.write(exercises)
-        for ex in exercises[:3]:
-            name = ex['name']
-            difficulty = ex['difficulty']
-            equipment = ex['equipment']
-            #exercise_info[name]= f"difficulty: {difficulty}, equipment needed: {equipment}, Here are some instructional videos:\n{get_yt_info(search_yt(name))}"
-            exercise_info[name]= f"difficulty: {difficulty}, equipment needed: {equipment}, type {ex['type']}, Here are some instructional videos:\n"
-            #st.write(get_yt_info(search_yt(name))) # test
+        muscle_group_list = extract_muscle_group(prompt)
+        #st.write( muscle_group_list) # test
+        #st.write(get_exercise_info('biceps', workout_type, difficulty)) # test
+        # Get exercise information
+        exercise_info = {}
+        for muscle_group in muscle_group_list:
+            exercises = get_exercise_info(muscle_group, difficulty, workout_type)
+            #st.write(exercises)
+            for ex in exercises[:3]:
+                name = ex['name']
+                difficulty = ex['difficulty']
+                equipment = ex['equipment']
+                #exercise_info[name]= f"difficulty: {difficulty}, equipment needed: {equipment}, Here are some instructional videos:\n{get_yt_info(search_yt(name))}"
+                exercise_info[name]= f"difficulty: {difficulty}, equipment needed: {equipment}, type {ex['type']}, Here are some instructional videos:\n"
+                #st.write(get_yt_info(search_yt(name))) # test
 
 
-    system_message = {'role':'system',
-                'content':\
-                f"""
-                You are a knowledgeable and friendly fitness instructor. 
-                Keep responses concise and engaging.
+        system_message = {'role':'system',
+                    'content':\
+                    f"""
+                    You are a knowledgeable and friendly fitness instructor. 
+                    Keep responses concise and engaging.
 
-                Available equipment: {', '.join(get_available_equipment())}. 
-                useful tips to generate workouts: {tips_info}
-                useful exercise info: {exercise_info}
+                    Available equipment: {', '.join(get_available_equipment())}. 
+                    useful tips to generate workouts: {tips_info}
+                    useful exercise info: {exercise_info}
 
-                """}
+                    """}
 
-    messages_to_pass.pop(0) # deleating the first SM
-    messages_to_pass.insert(0,system_message)
-    st.write(messages_to_pass)
+        messages_to_pass.pop(0) # deleating the first SM
+        messages_to_pass.insert(0,system_message)
+        st.write(messages_to_pass)
 
-    # Get stream response
-    stream = chat_completion_request(messages_to_pass)
+        # Get stream response
+        stream = chat_completion_request(messages_to_pass, stream = False)
 
-    # Write Stream
-    with st.chat_message('assistant'):
-        responses = st.write_stream(stream)
-    # Append Messages.
-    st.session_state.messages.append({'role':'assistant','content':responses})
+        workouts = extract_exercises(stream.choices[0].message.content)
+        yt_urls = []
+        for exercise in workouts:
+            yt_urls.append(get_yt_info(search_yt(exercise)))
 
+        messages_to_pass.append({'role': 'system', 'content':f'''
+                    Youtube Links for exercises recommended: {yt_urls}
+                    Apply this to the workouts you recommend.                                      
+    '''})
+        st.write(workouts)
 
+        stream = chat_completion_request(messages_to_pass)
 
-with st.sidebar:
-    st.header("💡 Tips")
-    st.write("""
-    - Ask for specific muscle groups like biceps, chest, or abs
-    - Ask for exercise recommendations and instructions
-    - Ask for exercise frequency and intensity
-    """)
-    
-    st.header("🏋️‍♂️ Available Equipment")
-    equipment_df = pd.DataFrame(equipment_data)
-    st.dataframe(equipment_df, hide_index=True)
+        # Write Stream
+        with st.chat_message('assistant'):
+            responses = st.write_stream(stream)
+        # Append Messages.
+        st.session_state.messages.append({'role':'assistant','content':responses})
 
+        #st.write(st.session_state.messages[-1]['content'])
 
+    with st.sidebar:
+        st.header("💡 Tips")
+        st.write("""
+        - Ask for specific muscle groups like biceps, chest, or abs
+        - Ask for exercise recommendations and instructions
+        - Ask for exercise frequency and intensity
+        """)
+        
+        st.header("🏋️‍♂️ Available Equipment")
+        equipment_df = pd.DataFrame(equipment_data)
+        st.dataframe(equipment_df, hide_index=True)
+
+else:
+    st.warning("Please select your difficulty level and workout type for safe recommendations")
 
 
 
