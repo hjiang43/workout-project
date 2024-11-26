@@ -4,6 +4,9 @@ import googleapiclient.discovery
 from openai import OpenAI
 from typing import List, Dict
 import pandas as pd
+import os
+import json
+from datetime import datetime, timedelta
 
 best_practices= '''
     This guide provides a step-by-step approach to creating an effective workout:
@@ -53,6 +56,117 @@ best_practices= '''
 '''
 
 # Define Classes
+class ExerciseMemoryTracker:
+    def __init__(self, user_id):
+        """
+        Initialize the exercise memory tracker for a specific user.
+        
+        Args:
+            user_id (str): Unique identifier for the user
+        """
+        self.user_id = user_id
+        self.memory_file = f'file/exercise_memory_{user_id}.json'
+        
+        os.makedirs('file', exist_ok=True)
+
+        if not os.path.exists(self.memory_file):
+            with open(self.memory_file, 'w') as f:
+                json.dump([], f)
+    
+    def store_exercise_memory(self, exercise_details):
+        """
+        Store exercise details in user's memory.
+        
+        Args:
+            exercise_details (dict): Dictionary containing exercise information
+            Expected keys: 
+            - 'muscle_group': str (e.g., 'biceps')
+            - 'exercise_name': str (e.g., 'barbell curls')
+            - 'difficulty': str (e.g., 'intermediate')
+            - 'workout_type': str (e.g., 'strength')
+        """
+        # Add timestamp
+        exercise_details['timestamp'] = datetime.now().isoformat()
+        
+        # Read existing memories
+        with open(self.memory_file, 'r') as f:
+            memories = json.load(f)
+        
+        # Append new memory
+        memories.append(exercise_details)
+        
+        # Write back to file
+        with open(self.memory_file, 'w') as f:
+            json.dump(memories, f, indent=2)
+    
+    def get_exercise_memories(self, days=None, muscle_group=None, workout_type=None):
+        """
+        Retrieve exercise memories with optional filtering.
+        
+        Args:
+            days (int, optional): Number of recent days to retrieve memories from
+            muscle_group (str, optional): Filter by specific muscle group
+            workout_type (str, optional): Filter by specific workout type
+        
+        Returns:
+            list: Filtered list of exercise memories
+        """
+        with open(self.memory_file, 'r') as f:
+            memories = json.load(f)
+        
+        # Filter memories
+        filtered_memories = memories
+        
+        if days:
+            cutoff_date = datetime.now() - timedelta(days=days)
+            filtered_memories = [
+                memory for memory in filtered_memories 
+                if datetime.fromisoformat(memory['timestamp']) >= cutoff_date
+            ]
+        
+        if muscle_group:
+            filtered_memories = [
+                memory for memory in filtered_memories
+                if memory.get('muscle_group', '').lower() == muscle_group.lower()
+            ]
+        
+        if workout_type:
+            filtered_memories = [
+                memory for memory in filtered_memories
+                if memory.get('workout_type', '').lower() == workout_type.lower()
+            ]
+        
+        return filtered_memories
+    
+    def summarize_memories(self, days=30):
+        """
+        Generate a summary of exercise memories.
+        
+        Args:
+            days (int): Number of recent days to summarize
+        
+        Returns:
+            dict: Summary of exercise memories
+        """
+        memories = self.get_exercise_memories(days=days)
+        
+        summary = {
+            'total_exercises': len(memories),
+            'muscle_group_breakdown': {},
+            'workout_type_breakdown': {},
+            'difficulty_breakdown': {}
+        }
+        
+        for memory in memories:
+            muscle_group = memory.get('muscle_group', 'Unknown')
+            summary['muscle_group_breakdown'][muscle_group] = summary['muscle_group_breakdown'].get(muscle_group, 0) + 1
+            workout_type = memory.get('workout_type', 'Unknown')
+            summary['workout_type_breakdown'][workout_type] = summary['workout_type_breakdown'].get(workout_type, 0) + 1
+            difficulty = memory.get('difficulty', 'Unknown')
+            summary['difficulty_breakdown'][difficulty] = summary['difficulty_breakdown'].get(difficulty, 0) + 1
+        
+        return summary
+    
 class Search_Result:
     def __init__(self, search_result) -> None:
         self.video_id = search_result['id']['videoId']
@@ -203,6 +317,31 @@ def extract_exercises(text: str) -> list:
     except Exception:
         return "none"
 
+def store_workout_memory(workouts_list, muscle_groups, user_difficulty, user_workout_type):
+    """
+    Store workout information to memory file.
+    
+    Args:
+        workouts_list (list): List of exercises
+        muscle_groups (list): List of muscle groups
+        user_difficulty (str): User's difficulty level
+        user_workout_type (str): Type of workout
+    """
+    try:
+        user_id = "default_user"
+        memory_tracker = ExerciseMemoryTracker(user_id)
+        
+        for exercise in workouts_list:
+            exercise_memory_info = {
+                'muscle_group': muscle_groups[0] if muscle_groups else 'unknown',
+                'exercise_name': exercise,
+                'difficulty': user_difficulty,
+                'workout_type': user_workout_type
+            }
+            memory_tracker.store_exercise_memory(exercise_memory_info)
+    except Exception as e:
+        st.error(f"Error storing exercise memory: {str(e)}")
+
 # ----- Define Tools -----
 tools = [
     # {'type': 'function',
@@ -261,6 +400,13 @@ if difficulty != 'None' and workout_type != 'None':
     for msg in st.session_state.messages:
         st.chat_message(msg['role']).write(msg['content'])
 
+    if 'workouts' not in st.session_state:
+        st.session_state.workouts = []
+    if 'selected_exercises' not in st.session_state:
+        st.session_state.selected_exercises = []
+    if 'muscle_groups' not in st.session_state:
+        st.session_state.muscle_groups = []
+
     if prompt := st.chat_input("Ask me anything about exercises..."):
         st.chat_message("user").write(prompt)
         st.session_state.messages.append({"role": "user", "content": prompt})
@@ -301,6 +447,7 @@ if difficulty != 'None' and workout_type != 'None':
         #st.write('tips info:'+tips_info) # test
 
         muscle_group_list = extract_muscle_group(prompt)
+        st.session_state.muscle_groups = muscle_group_list
         #st.write( muscle_group_list) # test
         #st.write(get_exercise_info('biceps', workout_type, difficulty)) # test
         # Get exercise information
@@ -337,6 +484,8 @@ if difficulty != 'None' and workout_type != 'None':
         stream = chat_completion_request(messages_to_pass, stream = False)
 
         workouts = extract_exercises(stream.choices[0].message.content)
+        st.session_state.workouts = workouts
+                
         yt_urls = []
         for exercise in workouts:
             yt_urls.append(get_yt_info(search_yt(exercise)))
@@ -352,10 +501,55 @@ if difficulty != 'None' and workout_type != 'None':
         # Write Stream
         with st.chat_message('assistant'):
             responses = st.write_stream(stream)
+
         # Append Messages.
         st.session_state.messages.append({'role':'assistant','content':responses})
 
         #st.write(st.session_state.messages[-1]['content'])
+        
+    if st.session_state.workouts:  # Only show if there are workouts
+        st.write("---")
+        st.write("👇 Select the exercises you plan to do from the recommendations above:")
+        
+        # Add radio button for initial choice
+        selection_choice = st.radio(
+            "Would you like to do any of these exercises?",
+            ["Yes", "No, skip these exercises"],
+            index=0  # Default to "Yes"
+        )
+        
+        if selection_choice == "Yes":
+            # Create multiselect with the workout list
+            st.session_state.selected_exercises = st.multiselect(
+                "Choose exercises you'll perform:",
+                st.session_state.workouts,
+                default=st.session_state.selected_exercises,
+                help="Select the exercises you plan to do. You can select multiple exercises."
+            )
+            
+            # Only store memories if user has made selections and clicks confirm
+            if st.button("Confirm Exercise Selection"):
+                if st.session_state.selected_exercises:
+                    # Store only selected exercises
+                    store_workout_memory(
+                        st.session_state.selected_exercises, 
+                        st.session_state.muscle_groups,
+                        difficulty, 
+                        workout_type
+                    )
+                    st.success(f"Saved {len(st.session_state.selected_exercises)} exercises to your workout history!")
+                    
+                    # Show what was saved
+                    st.write("✅ Saved exercises:")
+                    for ex in st.session_state.selected_exercises:
+                        st.write(f"- {ex}")
+                else:
+                    st.info("No exercises were selected for tracking.")
+        else:
+            st.info("Skipped exercise tracking for this recommendation.")
+            # Clear selected exercises when user chooses to skip
+            st.session_state.selected_exercises = []
+
 
     with st.sidebar:
         st.header("💡 Tips")
