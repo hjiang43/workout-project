@@ -370,202 +370,203 @@ tools = [
         "description": "Get best practices of creating a workout and exercising in general including exercises, sets, reps, duration, frequency, etc."
     }}
 ]
-
-
-st.title("💪 WorkoutBot")
-st.write(f"Hi {st.session_state.username}. Chat with me about exercises! I can help you find exercises for specific muscle groups and provide detailed instructions.")
-difficulty = st.selectbox("Select your level of Experience", 
-                          ['None', 'beginner', 'intermediate', 'expert'], 
-                          placeholder = 'None')
-workout_type = st.selectbox("Select the type of workout", 
-                            ['None', 'cardio', 'olympic_weightlifting', 'plyometrics', 'powerlifting', 'strength', 'stretching', 'strongman'], 
+if 'username' in st.session_state:
+    # st.write(st.session_state.username)
+    st.title("💪 WorkoutBot")
+    st.write(f"Hi {st.session_state.username[0]}. Chat with me about exercises! I can help you find exercises for specific muscle groups and provide detailed instructions.")
+    difficulty = st.selectbox("Select your level of Experience", 
+                            ['None', 'beginner', 'intermediate', 'expert'], 
                             placeholder = 'None')
-client = OpenAI(api_key=st.secrets["API_KEY"])
-API_NINJAS_KEY = st.secrets["API_KEY_N"]
+    workout_type = st.selectbox("Select the type of workout", 
+                                ['None', 'cardio', 'olympic_weightlifting', 'plyometrics', 'powerlifting', 'strength', 'stretching', 'strongman'], 
+                                placeholder = 'None')
+    client = OpenAI(api_key=st.secrets["API_KEY"])
+    API_NINJAS_KEY = st.secrets["API_KEY_N"]
 
-if difficulty != 'None' and workout_type != 'None':
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
-
-
-    youtube_api_key = st.secrets['YT_API_KEY']
-    if 'youtube_client' not in st.session_state:
-        st.session_state.youtube_client = googleapiclient.discovery.build(
-            serviceName = 'youtube',
-            version = 'v3',
-            developerKey= youtube_api_key)
+    if difficulty != 'None' and workout_type != 'None':
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
 
 
-
-    for msg in st.session_state.messages:
-        st.chat_message(msg['role']).write(msg['content'])
-
-    if 'workouts' not in st.session_state:
-        st.session_state.workouts = []
-    if 'selected_exercises' not in st.session_state:
-        st.session_state.selected_exercises = []
-    if 'muscle_groups' not in st.session_state:
-        st.session_state.muscle_groups = []
-
-    if prompt := st.chat_input("Ask me anything about exercises..."):
-        st.chat_message("user").write(prompt)
-        st.session_state.messages.append({"role": "user", "content": prompt})
+        youtube_api_key = st.secrets['YT_API_KEY']
+        if 'youtube_client' not in st.session_state:
+            st.session_state.youtube_client = googleapiclient.discovery.build(
+                serviceName = 'youtube',
+                version = 'v3',
+                developerKey= youtube_api_key)
 
 
-        # conversation history buffer (maybe later)
-        messages_to_pass = st.session_state.messages.copy()
 
-        system_message = {'role':'system',
-                    'content':\
-                    f"""
-                    You are a knowledgeable and friendly fitness instructor. 
-                    Keep responses concise and engaging.
-                    """}
+        for msg in st.session_state.messages:
+            st.chat_message(msg['role']).write(msg['content'])
 
-        messages_to_pass.insert(0,system_message)
+        if 'workouts' not in st.session_state:
+            st.session_state.workouts = []
+        if 'selected_exercises' not in st.session_state:
+            st.session_state.selected_exercises = []
+        if 'muscle_groups' not in st.session_state:
+            st.session_state.muscle_groups = []
 
-        # first llm call
-        response = chat_completion_request(messages_to_pass, stream = False, tools = tools, tool_choice="auto")
-        st.write(response)
-        response_message = response.choices[0].message
+        if prompt := st.chat_input("Ask me anything about exercises..."):
+            st.chat_message("user").write(prompt)
+            st.session_state.messages.append({"role": "user", "content": prompt})
 
-        # Call tool if tools needds to be called
-        tool_calls = response_message.tool_calls
-        #st.write(tool_calls)
-        if tool_calls:
-            # If true the model will return the name of the tool / function to call and the arguments
-            tool_call_id = tool_calls[0].id
-            tool_function_name = tool_calls[0].function.name
 
-            if tool_function_name == 'get_tips':
-                tips_info = best_practices
+            # conversation history buffer (maybe later)
+            messages_to_pass = st.session_state.messages.copy()
+
+            system_message = {'role':'system',
+                        'content':\
+                        f"""
+                        You are a knowledgeable and friendly fitness instructor. 
+                        Keep responses concise and engaging.
+                        """}
+
+            messages_to_pass.insert(0,system_message)
+
+            # first llm call
+            response = chat_completion_request(messages_to_pass, stream = False, tools = tools, tool_choice="auto")
+            st.write(response)
+            response_message = response.choices[0].message
+
+            # Call tool if tools needds to be called
+            tool_calls = response_message.tool_calls
+            #st.write(tool_calls)
+            if tool_calls:
+                # If true the model will return the name of the tool / function to call and the arguments
+                tool_call_id = tool_calls[0].id
+                tool_function_name = tool_calls[0].function.name
+
+                if tool_function_name == 'get_tips':
+                    tips_info = best_practices
+                else:
+                    st.write(f'Error: function {tool_function_name} does not exist')
             else:
-                st.write(f'Error: function {tool_function_name} does not exist')
-        else:
-            tips_info = " "
+                tips_info = " "
 
-        #st.write('tips info:'+tips_info) # test
+            #st.write('tips info:'+tips_info) # test
 
-        muscle_group_list = extract_muscle_group(prompt)
-        st.session_state.muscle_groups = muscle_group_list
-        #st.write( muscle_group_list) # test
-        #st.write(get_exercise_info('biceps', workout_type, difficulty)) # test
-        # Get exercise information
-        exercise_info = {}
-        for muscle_group in muscle_group_list:
-            exercises = get_exercise_info(muscle_group, difficulty, workout_type)
-            #st.write(exercises)
-            for ex in exercises[:3]:
-                name = ex['name']
-                difficulty = ex['difficulty']
-                equipment = ex['equipment']
-                #exercise_info[name]= f"difficulty: {difficulty}, equipment needed: {equipment}, Here are some instructional videos:\n{get_yt_info(search_yt(name))}"
-                exercise_info[name]= f"difficulty: {difficulty}, equipment needed: {equipment}, type {ex['type']}, Here are some instructional videos:\n"
-                #st.write(get_yt_info(search_yt(name))) # test
+            muscle_group_list = extract_muscle_group(prompt)
+            st.session_state.muscle_groups = muscle_group_list
+            #st.write( muscle_group_list) # test
+            #st.write(get_exercise_info('biceps', workout_type, difficulty)) # test
+            # Get exercise information
+            exercise_info = {}
+            for muscle_group in muscle_group_list:
+                exercises = get_exercise_info(muscle_group, difficulty, workout_type)
+                #st.write(exercises)
+                for ex in exercises[:3]:
+                    name = ex['name']
+                    difficulty = ex['difficulty']
+                    equipment = ex['equipment']
+                    #exercise_info[name]= f"difficulty: {difficulty}, equipment needed: {equipment}, Here are some instructional videos:\n{get_yt_info(search_yt(name))}"
+                    exercise_info[name]= f"difficulty: {difficulty}, equipment needed: {equipment}, type {ex['type']}, Here are some instructional videos:\n"
+                    #st.write(get_yt_info(search_yt(name))) # test
 
 
-        system_message = {'role':'system',
-                    'content':\
-                    f"""
-                    You are a knowledgeable and friendly fitness instructor. 
-                    Keep responses concise and engaging.
+            system_message = {'role':'system',
+                        'content':\
+                        f"""
+                        You are a knowledgeable and friendly fitness instructor. 
+                        Keep responses concise and engaging.
 
-                    Available equipment: {', '.join(get_available_equipment())}. 
-                    useful tips to generate workouts: {tips_info}
-                    useful exercise info: {exercise_info}
+                        Available equipment: {', '.join(get_available_equipment())}. 
+                        useful tips to generate workouts: {tips_info}
+                        useful exercise info: {exercise_info}
 
-                    """}
+                        """}
 
-        messages_to_pass.pop(0) # deleating the first SM
-        messages_to_pass.insert(0,system_message)
-        st.write(messages_to_pass)
+            messages_to_pass.pop(0) # deleating the first SM
+            messages_to_pass.insert(0,system_message)
+            st.write(messages_to_pass)
 
-        # Get stream response
-        stream = chat_completion_request(messages_to_pass, stream = False)
+            # Get stream response
+            stream = chat_completion_request(messages_to_pass, stream = False)
 
-        workouts = extract_exercises(stream.choices[0].message.content)
-        st.session_state.workouts = workouts
-                
-        yt_urls = []
-        for exercise in workouts:
-            yt_urls.append(get_yt_info(search_yt(exercise)))
+            workouts = extract_exercises(stream.choices[0].message.content)
+            st.session_state.workouts = workouts
+                    
+            yt_urls = []
+            for exercise in workouts:
+                yt_urls.append(get_yt_info(search_yt(exercise)))
 
-        messages_to_pass.append({'role': 'system', 'content':f'''
-                    Youtube Links for exercises recommended: {yt_urls}
-                    Apply this to the workouts you recommend.                                      
-    '''})
-        st.write(workouts)
+            messages_to_pass.append({'role': 'system', 'content':f'''
+                        Youtube Links for exercises recommended: {yt_urls}
+                        Apply this to the workouts you recommend.                                      
+        '''})
+            st.write(workouts)
 
-        stream = chat_completion_request(messages_to_pass)
+            stream = chat_completion_request(messages_to_pass)
 
-        # Write Stream
-        with st.chat_message('assistant'):
-            responses = st.write_stream(stream)
+            # Write Stream
+            with st.chat_message('assistant'):
+                responses = st.write_stream(stream)
 
-        # Append Messages.
-        st.session_state.messages.append({'role':'assistant','content':responses})
+            # Append Messages.
+            st.session_state.messages.append({'role':'assistant','content':responses})
 
-        #st.write(st.session_state.messages[-1]['content'])
-        
-    if st.session_state.workouts:  # Only show if there are workouts
-        st.write("---")
-        st.write("👇 Select the exercises you plan to do from the recommendations above:")
-        
-        # Add radio button for initial choice
-        selection_choice = st.radio(
-            "Would you like to do any of these exercises?",
-            ["Yes", "No, skip these exercises"],
-            index=0  # Default to "Yes"
-        )
-        
-        if selection_choice == "Yes":
-            # Create multiselect with the workout list
-            st.session_state.selected_exercises = st.multiselect(
-                "Choose exercises you'll perform:",
-                st.session_state.workouts,
-                default=st.session_state.selected_exercises,
-                help="Select the exercises you plan to do. You can select multiple exercises."
+            #st.write(st.session_state.messages[-1]['content'])
+            
+        if st.session_state.workouts:  # Only show if there are workouts
+            st.write("---")
+            st.write("👇 Select the exercises you plan to do from the recommendations above:")
+            
+            # Add radio button for initial choice
+            selection_choice = st.radio(
+                "Would you like to do any of these exercises?",
+                ["Yes", "No, skip these exercises"],
+                index=0  # Default to "Yes"
             )
             
-            # Only store memories if user has made selections and clicks confirm
-            if st.button("Confirm Exercise Selection"):
-                if st.session_state.selected_exercises:
-                    # Store only selected exercises
-                    store_workout_memory(
-                        st.session_state.selected_exercises, 
-                        st.session_state.muscle_groups,
-                        difficulty, 
-                        workout_type
-                    )
-                    st.success(f"Saved {len(st.session_state.selected_exercises)} exercises to your workout history!")
-                    
-                    # Show what was saved
-                    st.write("✅ Saved exercises:")
-                    for ex in st.session_state.selected_exercises:
-                        st.write(f"- {ex}")
-                else:
-                    st.info("No exercises were selected for tracking.")
-        else:
-            st.info("Skipped exercise tracking for this recommendation.")
-            # Clear selected exercises when user chooses to skip
-            st.session_state.selected_exercises = []
+            if selection_choice == "Yes":
+                # Create multiselect with the workout list
+                st.session_state.selected_exercises = st.multiselect(
+                    "Choose exercises you'll perform:",
+                    st.session_state.workouts,
+                    default=st.session_state.selected_exercises,
+                    help="Select the exercises you plan to do. You can select multiple exercises."
+                )
+                
+                # Only store memories if user has made selections and clicks confirm
+                if st.button("Confirm Exercise Selection"):
+                    if st.session_state.selected_exercises:
+                        # Store only selected exercises
+                        store_workout_memory(
+                            st.session_state.selected_exercises, 
+                            st.session_state.muscle_groups,
+                            difficulty, 
+                            workout_type
+                        )
+                        st.success(f"Saved {len(st.session_state.selected_exercises)} exercises to your workout history!")
+                        
+                        # Show what was saved
+                        st.write("✅ Saved exercises:")
+                        for ex in st.session_state.selected_exercises:
+                            st.write(f"- {ex}")
+                    else:
+                        st.info("No exercises were selected for tracking.")
+            else:
+                st.info("Skipped exercise tracking for this recommendation.")
+                # Clear selected exercises when user chooses to skip
+                st.session_state.selected_exercises = []
 
 
-    with st.sidebar:
-        st.header("💡 Tips")
-        st.write("""
-        - Ask for specific muscle groups like biceps, chest, or abs
-        - Ask for exercise recommendations and instructions
-        - Ask for exercise frequency and intensity
-        """)
-        
-        st.header("🏋️‍♂️ Available Equipment")
-        equipment_df = pd.DataFrame(equipment_data)
-        st.dataframe(equipment_df, hide_index=True)
+        with st.sidebar:
+            st.header("💡 Tips")
+            st.write("""
+            - Ask for specific muscle groups like biceps, chest, or abs
+            - Ask for exercise recommendations and instructions
+            - Ask for exercise frequency and intensity
+            """)
+            
+            st.header("🏋️‍♂️ Available Equipment")
+            equipment_df = pd.DataFrame(equipment_data)
+            st.dataframe(equipment_df, hide_index=True)
 
+    else:
+        st.warning("Please select your difficulty level and workout type for safe recommendations")
 else:
-    st.warning("Please select your difficulty level and workout type for safe recommendations")
-
+    st.warning("Please Login before accessing the workout app")
 
 
 # # Change logs

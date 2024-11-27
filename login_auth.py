@@ -39,7 +39,7 @@ def login_attempt(login, user_data):
                     wb.open('https://workout-project-yvfw4gvl25.streamlit.app/', new = 0, autoraise=True)
             else:
                 st.warning("Username and/or password is incorrect")
-            
+            return username  
         elif account_reset:
             email = st.text_input("Enter your email to reset password")
             if email:
@@ -58,14 +58,13 @@ def login_attempt(login, user_data):
                             st.success("Password reset successfully!")
                     else:
                         st.warning("Passwords do not match")
-    return username
-
+    
 st.title("Welcome to the workout app")
 st.header("Sign up to build workouts or Login to access your account")
 
 login = st.selectbox("Login/ Sign Up", ['Select an option', 'Login', 'Sign Up'])
 
-directory_path = "/workspaces/workout-project/"
+directory_path = "/workspaces/workout-project"
 csv_files = [file for file in os.listdir(directory_path) if file.endswith('.csv')]
 
 if "User_Credentials.csv" in csv_files:
@@ -79,4 +78,7 @@ if login == 'Sign Up':
 elif login == 'Login':
     user = login_attempt(login, user_data)
     if 'username' not in st.session_state:
-        st.session_state.username = user
+        st.session_state.username = [user]
+    else:
+        st.session_state.username = [user]
+    #st.write(st.session_state.username[0])
