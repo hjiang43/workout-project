@@ -1,0 +1,72 @@
+[
+  {
+    "muscle_group": "biceps",
+    "exercise_name": "bicep curl",
+    "difficulty": "beginner",
+    "workout_type": "powerlifting",
+    "timestamp": "2024-11-26T01:56:41.102860"
+  },
+  {
+    "muscle_group": "biceps",
+    "exercise_name": "tricep extension",
+    "difficulty": "beginner",
+    "workout_type": "powerlifting",
+    "timestamp": "2024-11-26T01:56:41.103528"
+  },
+  {
+    "muscle_group": "biceps",
+    "exercise_name": "hammer curls",
+    "difficulty": "beginner",
+    "workout_type": "powerlifting",
+    "timestamp": "2024-11-26T01:56:41.104192"
+  },
+  {
+    "muscle_group": "biceps",
+    "exercise_name": "skull crushers",
+    "difficulty": "beginner",
+    "workout_type": "powerlifting",
+    "timestamp": "2024-11-26T01:56:41.105006"
+  },
+  {
+    "muscle_group": "biceps",
+    "exercise_name": "seated dip",
+    "difficulty": "beginner",
+    "workout_type": "powerlifting",
+    "timestamp": "2024-11-26T01:56:41.105871"
+  },
+  {
+    "muscle_group": "unknown",
+    "exercise_name": "preacher curls",
+    "difficulty": "intermediate",
+    "workout_type": "strength",
+    "timestamp": "2024-11-26T02:36:26.955967"
+  },
+  {
+    "muscle_group": "unknown",
+    "exercise_name": "dumbbell tricep kickbacks",
+    "difficulty": "intermediate",
+    "workout_type": "strength",
+    "timestamp": "2024-11-26T02:36:26.958745"
+  },
+  {
+    "muscle_group": "unknown",
+    "exercise_name": "rope pushdowns",
+    "difficulty": "intermediate",
+    "workout_type": "strength",
+    "timestamp": "2024-11-26T02:38:58.665922"
+  },
+  {
+    "muscle_group": "unknown",
+    "exercise_name": "dumbbell tricep kickbacks",
+    "difficulty": "intermediate",
+    "workout_type": "strength",
+    "timestamp": "2024-11-26T02:38:58.668813"
+  },
+  {
+    "muscle_group": "unknown",
+    "exercise_name": "preacher curls",
+    "difficulty": "intermediate",
+    "workout_type": "strength",
+    "timestamp": "2024-11-26T02:38:58.669351"
+  }
+]
