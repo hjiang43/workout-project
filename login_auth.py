@@ -65,7 +65,7 @@ st.header("Sign up to build workouts or Login to access your account")
 
 login = st.selectbox("Login/ Sign Up", ['Select an option', 'Login', 'Sign Up'])
 
-directory_path = "/workspaces/workout-project/"
+directory_path = "/workspaces/workout-project"
 csv_files = [file for file in os.listdir(directory_path) if file.endswith('.csv')]
 
 if "User_Credentials.csv" in csv_files:
