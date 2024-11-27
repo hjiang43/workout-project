@@ -373,7 +373,7 @@ tools = [
 
 
 st.title("💪 WorkoutBot")
-st.write("Chat with me about exercises! I can help you find exercises for specific muscle groups and provide detailed instructions.")
+st.write(f"Hi {st.session_state.username}. Chat with me about exercises! I can help you find exercises for specific muscle groups and provide detailed instructions.")
 difficulty = st.selectbox("Select your level of Experience", 
                           ['None', 'beginner', 'intermediate', 'expert'], 
                           placeholder = 'None')
