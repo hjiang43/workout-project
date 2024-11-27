@@ -370,10 +370,10 @@ tools = [
         "description": "Get best practices of creating a workout and exercising in general including exercises, sets, reps, duration, frequency, etc."
     }}
 ]
-st.write(st.session_state.username)
 if 'username' in st.session_state:
+    # st.write(st.session_state.username)
     st.title("💪 WorkoutBot")
-    st.write(f"Hi {st.session_state.username}. Chat with me about exercises! I can help you find exercises for specific muscle groups and provide detailed instructions.")
+    st.write(f"Hi {st.session_state.username[0]}. Chat with me about exercises! I can help you find exercises for specific muscle groups and provide detailed instructions.")
     difficulty = st.selectbox("Select your level of Experience", 
                             ['None', 'beginner', 'intermediate', 'expert'], 
                             placeholder = 'None')
