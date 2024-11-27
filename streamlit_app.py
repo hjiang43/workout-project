@@ -1,6 +1,6 @@
 import streamlit as st
 
-login = st.Page("login_auth".py, title = "Login", default = True)
+login = st.Page("login_auth.py", title = "Login", default = True)
 workout = st.Page("workout.py", title= "workout", )
 
 pg = st.navigation([login, workout])
