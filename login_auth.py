@@ -36,7 +36,8 @@ def login_attempt(login, user_data):
             user_row = user_data[user_data['username'] == username]
             if not user_row.empty:
                 if str(password) == str(user_row['password'].values[0]):
-                    wb.open('https://workout-project-yvfw4gvl25.streamlit.app/', new = 0, autoraise=True)
+                    # wb.open('https://workout-project-yvfw4gvl25.streamlit.app/', new = 0, autoraise=True)
+                    username = username
             else:
                 st.warning("Username and/or password is incorrect")
             return username  
@@ -64,7 +65,11 @@ st.header("Sign up to build workouts or Login to access your account")
 
 login = st.selectbox("Login/ Sign Up", ['Select an option', 'Login', 'Sign Up'])
 
-directory_path = "/mount/src/workout-project/"
+#Directory path for streamlit app
+# directory_path = "/mount/src/workout-project/"
+
+#Directory path for shreyas' server
+directory_path = "/workspaces/workout-project"
 csv_files = [file for file in os.listdir(directory_path) if file.endswith('.csv')]
 
 if "User_Credentials.csv" in csv_files:
