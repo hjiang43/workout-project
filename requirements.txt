@@ -3,6 +3,4 @@ openai
 google-api-python-client
 datetime
 timedelta
-json
 components
-os
