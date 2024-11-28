@@ -2,8 +2,9 @@ import streamlit as st
 import streamlit_calendar as stc
 from workout import ExerciseMemoryTracker
 import pandas as pd
-
+from datetime import datetime, timedelta
 import streamlit.components.v1 as components
+import json
 
 def render_fullcalendar(events):
     """
@@ -78,21 +79,57 @@ def render_fullcalendar(events):
     # Render the HTML and JS code using Streamlit's custom component API
     components.html(html, height=700)
 
+def get_exercise_memories(days=None, muscle_group=None, workout_type=None):
+        """
+        Retrieve exercise memories with optional filtering.
+        
+        Args:
+            days (int, optional): Number of recent days to retrieve memories from
+            muscle_group (str, optional): Filter by specific muscle group
+            workout_type (str, optional): Filter by specific workout type
+        
+        Returns:
+            list: Filtered list of exercise memories
+        """
+        with open(f"file/workout_log_hist_{st.session_state.username[0]}.json", 'r') as f:
+            memories = json.load(f)
+        
+        filtered_memories = memories
+        
+        if days:
+            cutoff_date = datetime.now() - timedelta(days=days)
+            filtered_memories = [
+                memory for memory in filtered_memories 
+                if datetime.fromisoformat(memory['date']) >= cutoff_date
+            ]
+        
+        if muscle_group:
+            filtered_memories = [
+                memory for memory in filtered_memories
+                if memory.get('muscle_group', '').lower() == muscle_group.lower()
+            ]
+        
+        if workout_type:
+            filtered_memories = [
+                memory for memory in filtered_memories
+                if memory.get('workout_type', '').lower() == workout_type.lower()
+            ]
+        
+        return filtered_memories
 
 def load_exercise_data():
     """Load and process exercise memory data"""
     user_id = "default_user"  # We can expand this when we implement user authentication
-    memory_tracker = ExerciseMemoryTracker(user_id)
+    #memory_tracker = ExerciseMemoryTracker(user_id)
     
-    # Get last xx days of exercise data, default is 30
-    memories = memory_tracker.get_exercise_memories(days=30)
+    memories = get_exercise_memories(days=30)
     if not memories:
         st.warning("No exercise data found. Start working out to see analysis!")
         return None
     
     df = pd.DataFrame(memories)
-    df['timestamp'] = pd.to_datetime(df['timestamp'])
-    df['date'] = df['timestamp'].dt.date
+    #df['timestamp'] = pd.to_datetime(df['date'])
+    #df['date'] = df['date'].dt.date
     return df
 
 def on_date_select(selected_date):
@@ -115,8 +152,8 @@ if df is not None:
     for _, row in grouped.iterrows():
         events.append({
             'title': row['muscle_group'],
-            'start': row['date'].strftime('%Y-%m-%d'),
-            'description': row['muscle_group']
+            'start': row['date'], #.strftime('%Y-%m-%d')
+            'description': f"{row['muscle_group']}" 
         })
 
     selected_date = stc.calendar(events=events, callbacks="dateClick")
