@@ -38,6 +38,7 @@ def login_attempt(login, user_data):
                 if str(password) == str(user_row['password'].values[0]):
                     # wb.open('https://workout-project-yvfw4gvl25.streamlit.app/', new = 0, autoraise=True)
                     username = username
+                    st.success("You are successfully logged in. You can access other pages now.")
             else:
                 st.warning("Username and/or password is incorrect")
             return username  
