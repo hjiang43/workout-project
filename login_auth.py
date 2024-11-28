@@ -23,8 +23,7 @@ def create_account(login, user_data):
                     user_account_df = pd.DataFrame([user_account_info])
                     user_data = pd.concat([user_data, user_account_df], index = False)
                     user_data.to_csv('User_Credentials.csv', index=False)
-                    success = st.success("Your account has been successfully created. Please login to access your account")
-    return success
+                    st.success("Your account has been successfully created. Please login to access your account")
 
 def login_attempt(login, user_data):
     if login == 'Login':
