@@ -23,8 +23,7 @@ def create_account(login, user_data):
                     user_account_df = pd.DataFrame([user_account_info])
                     user_data = pd.concat([user_data, user_account_df], index = False)
                     user_data.to_csv('User_Credentials.csv', index=False)
-                    success = st.success("Your account has been successfully created. Please login to access your account")
-    return success
+                    st.success("Your account has been successfully created. Please login to access your account")
 
 def login_attempt(login, user_data):
     if login == 'Login':
@@ -36,7 +35,9 @@ def login_attempt(login, user_data):
             user_row = user_data[user_data['username'] == username]
             if not user_row.empty:
                 if str(password) == str(user_row['password'].values[0]):
-                    wb.open('https://workout-project-yvfw4gvl25.streamlit.app/', new = 0, autoraise=True)
+                    # wb.open('https://workout-project-yvfw4gvl25.streamlit.app/', new = 0, autoraise=True)
+                    username = username
+                    st.success("You are successfully logged in. You can access other pages now.")
             else:
                 st.warning("Username and/or password is incorrect")
             return username  
@@ -64,7 +65,11 @@ st.header("Sign up to build workouts or Login to access your account")
 
 login = st.selectbox("Login/ Sign Up", ['Select an option', 'Login', 'Sign Up'])
 
+#Directory path for streamlit app
 directory_path = "/mount/src/workout-project/"
+
+#Directory path for shreyas' server
+#directory_path = "/workspaces/workout-project"
 csv_files = [file for file in os.listdir(directory_path) if file.endswith('.csv')]
 
 if "User_Credentials.csv" in csv_files:

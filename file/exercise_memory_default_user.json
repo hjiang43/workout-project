@@ -68,5 +68,47 @@
     "difficulty": "intermediate",
     "workout_type": "strength",
     "timestamp": "2024-11-26T02:38:58.669351"
+  },
+  {
+    "muscle_group": "chest",
+    "exercise_name": "bench press",
+    "difficulty": "beginner",
+    "workout_type": "strength",
+    "timestamp": "2024-11-28T14:30:25.784045"
+  },
+  {
+    "muscle_group": "chest",
+    "exercise_name": "incline dumbbell press",
+    "difficulty": "beginner",
+    "workout_type": "strength",
+    "timestamp": "2024-11-28T14:30:25.786768"
+  },
+  {
+    "muscle_group": "chest",
+    "exercise_name": "push-ups",
+    "difficulty": "beginner",
+    "workout_type": "strength",
+    "timestamp": "2024-11-28T14:30:25.787113"
+  },
+  {
+    "muscle_group": "chest",
+    "exercise_name": "tricep dips",
+    "difficulty": "beginner",
+    "workout_type": "strength",
+    "timestamp": "2024-11-28T14:30:25.787923"
+  },
+  {
+    "muscle_group": "chest",
+    "exercise_name": "tricep extensions",
+    "difficulty": "beginner",
+    "workout_type": "strength",
+    "timestamp": "2024-11-28T14:30:25.788729"
+  },
+  {
+    "muscle_group": "chest",
+    "exercise_name": "close-grip bench press",
+    "difficulty": "beginner",
+    "workout_type": "strength",
+    "timestamp": "2024-11-28T14:30:25.789398"
   }
 ]

@@ -117,88 +117,90 @@ def create_muscle_group_chart(df):
     return chart
 
 st.title("📊 Workout Analysis")
+if 'username' in st.session_state:
+    df = load_exercise_data()
 
-df = load_exercise_data()
+    if df is not None:
+        # AI Analysis
+        st.subheader("WorkoutBot Analysis")
 
-if df is not None:
-    # AI Analysis
-    st.subheader("WorkoutBot Analysis")
-
-    if st.button("Generate WorkoutBot Analysis"):
-        with st.spinner("Analyzing your workout history..."):
-            analysis = get_ai_analysis(df)
-            st.markdown(analysis)
-    
-    st.divider()
-
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Total Workouts", len(df))
-    with col2:
-        st.metric("Unique Exercises", df['exercise_name'].nunique())
-    with col3:
-        st.metric("Days Active", df['date'].nunique())
-    
-    # Activity heatmap
-    st.subheader("Exercise Activity Over Time")
-    activity_chart = create_activity_heatmap(df)
-    if activity_chart:
-        st.altair_chart(activity_chart, use_container_width=True)
-    
-    # Workout type and muscle group analysis
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("Workout Types")
-        workout_chart = create_workout_type_chart(df)
-        if workout_chart:
-            st.altair_chart(workout_chart, use_container_width=True)
-    
-    with col2:
-        st.subheader("Muscle Groups")
-        muscle_chart = create_muscle_group_chart(df)
-        if muscle_chart:
-            st.altair_chart(muscle_chart, use_container_width=True)
-    
-    # exercise history
-    st.subheader("Exercise History")
-    
-    # Search for details
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        workout_types = ['All'] + sorted(df['workout_type'].unique().tolist())
-        selected_type = st.selectbox('Filter by Workout Type', workout_types)
-    
-    with col2:
-        muscle_groups = ['All'] + sorted(df['muscle_group'].unique().tolist())
-        selected_muscle = st.selectbox('Filter by Muscle Group', muscle_groups)
+        if st.button("Generate WorkoutBot Analysis"):
+            with st.spinner("Analyzing your workout history..."):
+                analysis = get_ai_analysis(df)
+                st.markdown(analysis)
         
-    with col3:
-        difficulties = ['All'] + sorted(df['difficulty'].unique().tolist())
-        selected_difficulty = st.selectbox('Filter by Difficulty', difficulties)
-    
-    # filters
-    filtered_df = df.copy()
-    if selected_type != 'All':
-        filtered_df = filtered_df[filtered_df['workout_type'] == selected_type]
-    if selected_muscle != 'All':
-        filtered_df = filtered_df[filtered_df['muscle_group'] == selected_muscle]
-    if selected_difficulty != 'All':
-        filtered_df = filtered_df[filtered_df['difficulty'] == selected_difficulty]
-    
-    # filtered data
-    st.dataframe(
-        filtered_df[['date', 'exercise_name', 'muscle_group', 'workout_type', 'difficulty']]
-        .sort_values('date', ascending=False),
-        hide_index=True
-    )
-    
-    # Export your data
-    if st.button('Export Exercise History'):
-        csv = filtered_df.to_csv(index=False)
-        st.download_button(
-            label="Download CSV",
-            data=csv,
-            file_name="exercise_history.csv",
-            mime="text/csv"
+        st.divider()
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Workouts", len(df))
+        with col2:
+            st.metric("Unique Exercises", df['exercise_name'].nunique())
+        with col3:
+            st.metric("Days Active", df['date'].nunique())
+        
+        # Activity heatmap
+        st.subheader("Exercise Activity Over Time")
+        activity_chart = create_activity_heatmap(df)
+        if activity_chart:
+            st.altair_chart(activity_chart, use_container_width=True)
+        
+        # Workout type and muscle group analysis
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("Workout Types")
+            workout_chart = create_workout_type_chart(df)
+            if workout_chart:
+                st.altair_chart(workout_chart, use_container_width=True)
+        
+        with col2:
+            st.subheader("Muscle Groups")
+            muscle_chart = create_muscle_group_chart(df)
+            if muscle_chart:
+                st.altair_chart(muscle_chart, use_container_width=True)
+        
+        # exercise history
+        st.subheader("Exercise History")
+        
+        # Search for details
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            workout_types = ['All'] + sorted(df['workout_type'].unique().tolist())
+            selected_type = st.selectbox('Filter by Workout Type', workout_types)
+        
+        with col2:
+            muscle_groups = ['All'] + sorted(df['muscle_group'].unique().tolist())
+            selected_muscle = st.selectbox('Filter by Muscle Group', muscle_groups)
+            
+        with col3:
+            difficulties = ['All'] + sorted(df['difficulty'].unique().tolist())
+            selected_difficulty = st.selectbox('Filter by Difficulty', difficulties)
+        
+        # filters
+        filtered_df = df.copy()
+        if selected_type != 'All':
+            filtered_df = filtered_df[filtered_df['workout_type'] == selected_type]
+        if selected_muscle != 'All':
+            filtered_df = filtered_df[filtered_df['muscle_group'] == selected_muscle]
+        if selected_difficulty != 'All':
+            filtered_df = filtered_df[filtered_df['difficulty'] == selected_difficulty]
+        
+        # filtered data
+        st.dataframe(
+            filtered_df[['date', 'exercise_name', 'muscle_group', 'workout_type', 'difficulty']]
+            .sort_values('date', ascending=False),
+            hide_index=True
         )
+        
+        # Export your data
+        if st.button('Export Exercise History'):
+            csv = filtered_df.to_csv(index=False)
+            st.download_button(
+                label="Download CSV",
+                data=csv,
+                file_name="exercise_history.csv",
+                mime="text/csv"
+            )
+else:
+    st.warning("Please Login to access your analysis")
