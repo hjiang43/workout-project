@@ -142,19 +142,21 @@ def on_date_select(selected_date):
     else:
         st.write("No exercises recorded for this day.")
 
-st.title("View your workouts in a calendar")
+if 'username' in st.session_state.username:
+    st.title("View your workouts in a calendar")
 
-df = load_exercise_data()
+    df = load_exercise_data()
 
-if df is not None:
-    grouped = df.groupby(['date', 'muscle_group']).size().reset_index(name='count')
-    events = []
-    for _, row in grouped.iterrows():
-        events.append({
-            'title': row['muscle_group'],
-            'start': row['date'], #.strftime('%Y-%m-%d')
-            'description': f"{row['muscle_group']}" 
-        })
+    if df is not None:
+        grouped = df.groupby(['date', 'muscle_group']).size().reset_index(name='count')
+        events = []
+        for _, row in grouped.iterrows():
+            events.append({
+                'title': row['muscle_group'],
+                'start': row['date'], #.strftime('%Y-%m-%d')
+                'description': f"{row['muscle_group']}" 
+            })
 
-    selected_date = stc.calendar(events=events, callbacks="dateClick")
-    
+        selected_date = stc.calendar(events=events, callbacks="dateClick")
+else:
+    st.warning("Login to view your calendar")
