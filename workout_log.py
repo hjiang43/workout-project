@@ -32,9 +32,9 @@ if 'username' in st.session_state:
         data_for_editor = df_today[['date', 'exercise_name', 'muscle_group']]
         username_column = [st.session_state.username] * len(data_for_editor)
         data_for_editor.insert(0, 'username', username_column)
-        data_for_editor['lbs/bw_reps for first set'] = ""
-        data_for_editor['lbs/bw_reps for second set'] = ""  
-        data_for_editor['lbs/bw_reps for third set'] = ""  
+        data_for_editor['lbs/bw_reps for first set'] = "NA"
+        data_for_editor['lbs/bw_reps for second set'] = "NA"  
+        data_for_editor['lbs/bw_reps for third set'] = "NA"  
         
         edited_df = st.data_editor(data_for_editor, use_container_width=False)
         save = st.button(icon = ":material/save:", label = "Save")
