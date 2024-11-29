@@ -186,194 +186,194 @@ class Search_Response:
             search_result = Search_Result(item)
             self.search_results.append(search_result)
 
-@st.cache_data
-
-
-
-# ----- Create Functions -----
-def load_equipment_data():
-    try:
-        df = pd.read_csv('file/workout_equipments.csv')
-        return df.to_dict('records')
-    except Exception as e:
-        st.error(f"Error loading equipment data: {str(e)}")
-        return []
-
-def get_exercise_info(muscle, workout_type = None, difficulty = None) -> List[Dict]:
-    """Fetch exercise information from API Ninjas."""
-    url = "https://api.api-ninjas.com/v1/exercises"
-    headers = {"X-Api-Key": API_NINJAS_KEY}
-    params = {"muscle": muscle.lower(), 'type':workout_type.lower(), "difficulty":difficulty.lower()} # this should be a dropdown
-
-    try:
-        response = requests.get(url, headers=headers, params=params)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        st.error(f"Error fetching exercise data: {str(e)}")
-        return []
-
-def get_available_equipment() -> List[str]:
-    """Get list of available equipment from CSV."""
-    return [item["Equipment Name"] for item in equipment_data]
-
-def get_equipment_purpose(equipment_name: str) -> str:
-    """Get purpose of specific equipment."""
-    for item in equipment_data:
-        if item["Equipment Name"].lower() == equipment_name.lower():
-            return item["Purpose"]
-    return "Purpose not found"
-
-# Load equipments data
-equipment_data = load_equipment_data()
-#print(equipment_data) # check
-
-def search_yt(query, max_results = 1, page_token = None): # I changed max results
-    yt_request = st.session_state.youtube_client.search().list(
-        part = "snippet", # search by keyword
-        maxResults = max_results, 
-        pageToken = page_token,
-        q = query + ' form', # I changed this
-
-        videoCaption = 'closedCaption', # Only including videos with caption. 
-        type = 'video'
-    )
-    yt_response = yt_request.execute()
-    search_response = Search_Response(yt_response)
-    return search_response
-
-def display_yt_results(search_response):
-    for search_result in search_response.search_results:
-        #st.write(f'Video ID: {search_result.video_id}')
-        st.write(f'Title: {search_result.title}')
-        st.write(f'Description: {search_result.description}')
-        st.write(f'URL: https://www.youtube.com/watch?v={search_result.video_id}')
-
-def get_yt_info(search_response):
-    for search_result in search_response.search_results:
-        result = f'Title: {search_result.title}. URL: https://www.youtube.com/watch?v={search_result.video_id}'
-        return result
-    
-def chat_completion_request(messages,stream=True, tools=None, tool_choice=None, model='gpt-4o-mini'):
-    try:
-        response = client.chat.completions.create(
-            model=model,
-            messages = messages,
-            tools=tools,
-            tool_choice = tool_choice,
-            stream = stream
-            )
-        return response
-    except Exception as e:
-        st.write("Unable to generate ChatCompletion response")
-        st.write(f"Exception: {e}")
-        return e
-
-muscles = ["abdominals, abductors, adductors, biceps, calves, chest, forearms, glutes, hamstrings, lats, lower_back, middle_back, neck, quadriceps, traps, triceps"]
-def extract_muscle_group(text: str) -> list:
-    """Extract muscle group from user input using OpenAI."""
-    try:
-        prompt = [
-            {"role": "system", "content": f'''
-            ONLY Assign one or more muscles groups. 
-            The only possible muscles groups are:{muscles}
-            Return the muscle groups separated by a space, for example: "biceps triceps" or "chest".
-            If you cannot assign any muscle groups return "Exercises for that muscle group does not exist in this database"            
-            '''},
-            {"role": "user", "content": text}
-        ]
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=prompt,
-            temperature=0,
-            stream=False
-        )
-        # Convert the space-separated string into a list
-        muscle_groups = response.choices[0].message.content.lower().split()
-        return [group for group in muscle_groups if group]  # Ensure no empty strings
-    except Exception:
-        return "Exercises for that muscle group does not exist"
-
-
-def extract_exercises(text: str) -> list:
-    """Extract muscle group from user input using OpenAI."""
-    try:
-        prompt = [
-            {"role": "system", "content": '''
-            from the text provided, extract the exercises and only extract the exercises. 
-            for example, if a text says, "Here are some good workouts, barbell curls, farmer's carry and Pull Ups", your output should look like this: "barbell curls, farmer's carry, Pull Ups"            
-            '''},
-            {"role": "user", "content": text}
-        ]
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=prompt,
-            temperature=0,
-            stream=False
-        )
-        # Convert the space-separated string into a list
-        exercises = response.choices[0].message.content.lower().split(', ')
-        return [group for group in exercises if group]  # Ensure no empty strings
-    except Exception:
-        return "none"
-
-def store_workout_memory(workouts_list, muscle_groups, user_difficulty, user_workout_type):
-    """
-    Store workout information to memory file.
-    
-    Args:
-        workouts_list (list): List of exercises
-        muscle_groups (list): List of muscle groups
-        user_difficulty (str): User's difficulty level
-        user_workout_type (str): Type of workout
-    """
-    try:
-        user_id = "default_user"
-        memory_tracker = ExerciseMemoryTracker(user_id)
-        
-        for exercise in workouts_list:
-            exercise_memory_info = {
-                'muscle_group': muscle_groups[0] if muscle_groups else 'unknown',
-                'exercise_name': exercise,
-                'difficulty': user_difficulty,
-                'workout_type': user_workout_type
-            }
-            memory_tracker.store_exercise_memory(exercise_memory_info)
-    except Exception as e:
-        st.error(f"Error storing exercise memory: {str(e)}")
-
-# ----- Define Tools -----
-tools = [
-    # {'type': 'function',
-    #  'function':{
-    #     "name": "recommend_equipment_exercises",
-    #     "description": "Get exercise recommendations based on available equipment",
-    #     "parameters": {
-    #         "type": "object",
-    #         "properties": {
-    #             "equipment": {
-    #                 "type": "string",
-    #                 "description": "The exercise equipment to use",
-    #                 "enum": get_available_equipment()
-    #             },
-    #             "muscle_group": {
-    #                 "type": "string",
-    #                 "description": "Target muscle group for the exercise"
-    #             }
-    #         },
-    #         "required": ["equipment", "muscle_group"]
-    #     }
-    # }},
-    {'type' : 'function',
-     'function':{
-        "name": "get_tips",
-        "description": "Get best practices of creating a workout and exercising in general including exercises, sets, reps, duration, frequency, etc."
-    }}
-]
 if 'username' in st.session_state:
+    
     # st.write(st.session_state.username)
     st.title("💪 WorkoutBot")
     st.write(f"Hi {st.session_state.username[0]}. Chat with me about exercises! I can help you find exercises for specific muscle groups and provide detailed instructions.")
+
+# ----- Create Functions -----
+    @st.cache_data
+    def load_equipment_data():
+        try:
+            df = pd.read_csv('file/workout_equipments.csv')
+            return df.to_dict('records')
+        except Exception as e:
+            st.error(f"Error loading equipment data: {str(e)}")
+            return []
+
+    def get_exercise_info(muscle, workout_type = None, difficulty = None) -> List[Dict]:
+        """Fetch exercise information from API Ninjas."""
+        url = "https://api.api-ninjas.com/v1/exercises"
+        headers = {"X-Api-Key": API_NINJAS_KEY}
+        params = {"muscle": muscle.lower(), 'type':workout_type.lower(), "difficulty":difficulty.lower()} # this should be a dropdown
+
+        try:
+            response = requests.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            st.error(f"Error fetching exercise data: {str(e)}")
+            return []
+
+    def get_available_equipment() -> List[str]:
+        """Get list of available equipment from CSV."""
+        return [item["Equipment Name"] for item in equipment_data]
+
+    def get_equipment_purpose(equipment_name: str) -> str:
+        """Get purpose of specific equipment."""
+        for item in equipment_data:
+            if item["Equipment Name"].lower() == equipment_name.lower():
+                return item["Purpose"]
+        return "Purpose not found"
+
+    # Load equipments data
+    equipment_data = load_equipment_data()
+    #print(equipment_data) # check
+
+    def search_yt(query, max_results = 1, page_token = None): # I changed max results
+        yt_request = st.session_state.youtube_client.search().list(
+            part = "snippet", # search by keyword
+            maxResults = max_results, 
+            pageToken = page_token,
+            q = query + ' form', # I changed this
+
+            videoCaption = 'closedCaption', # Only including videos with caption. 
+            type = 'video'
+        )
+        yt_response = yt_request.execute()
+        search_response = Search_Response(yt_response)
+        return search_response
+
+    def display_yt_results(search_response):
+        for search_result in search_response.search_results:
+            #st.write(f'Video ID: {search_result.video_id}')
+            st.write(f'Title: {search_result.title}')
+            st.write(f'Description: {search_result.description}')
+            st.write(f'URL: https://www.youtube.com/watch?v={search_result.video_id}')
+
+    def get_yt_info(search_response):
+        for search_result in search_response.search_results:
+            result = f'Title: {search_result.title}. URL: https://www.youtube.com/watch?v={search_result.video_id}'
+            return result
+        
+    def chat_completion_request(messages,stream=True, tools=None, tool_choice=None, model='gpt-4o-mini'):
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages = messages,
+                tools=tools,
+                tool_choice = tool_choice,
+                stream = stream
+                )
+            return response
+        except Exception as e:
+            st.write("Unable to generate ChatCompletion response")
+            st.write(f"Exception: {e}")
+            return e
+
+    muscles = ["abdominals, abductors, adductors, biceps, calves, chest, forearms, glutes, hamstrings, lats, lower_back, middle_back, neck, quadriceps, traps, triceps"]
+    def extract_muscle_group(text: str) -> list:
+        """Extract muscle group from user input using OpenAI."""
+        try:
+            prompt = [
+                {"role": "system", "content": f'''
+                ONLY Assign one or more muscles groups. 
+                The only possible muscles groups are:{muscles}
+                Return the muscle groups separated by a space, for example: "biceps triceps" or "chest".
+                If you cannot assign any muscle groups return "Exercises for that muscle group does not exist in this database"            
+                '''},
+                {"role": "user", "content": text}
+            ]
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=prompt,
+                temperature=0,
+                stream=False
+            )
+            # Convert the space-separated string into a list
+            muscle_groups = response.choices[0].message.content.lower().split()
+            return [group for group in muscle_groups if group]  # Ensure no empty strings
+        except Exception:
+            return "Exercises for that muscle group does not exist"
+
+
+    def extract_exercises(text: str) -> list:
+        """Extract muscle group from user input using OpenAI."""
+        try:
+            prompt = [
+                {"role": "system", "content": '''
+                from the text provided, extract the exercises and only extract the exercises. 
+                for example, if a text says, "Here are some good workouts, barbell curls, farmer's carry and Pull Ups", your output should look like this: "barbell curls, farmer's carry, Pull Ups"            
+                '''},
+                {"role": "user", "content": text}
+            ]
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=prompt,
+                temperature=0,
+                stream=False
+            )
+            # Convert the space-separated string into a list
+            exercises = response.choices[0].message.content.lower().split(', ')
+            return [group for group in exercises if group]  # Ensure no empty strings
+        except Exception:
+            return "none"
+
+    def store_workout_memory(workouts_list, muscle_groups, user_difficulty, user_workout_type):
+        """
+        Store workout information to memory file.
+        
+        Args:
+            workouts_list (list): List of exercises
+            muscle_groups (list): List of muscle groups
+            user_difficulty (str): User's difficulty level
+            user_workout_type (str): Type of workout
+        """
+        try:
+            user_id = "default_user"
+            memory_tracker = ExerciseMemoryTracker(user_id)
+            
+            for exercise in workouts_list:
+                exercise_memory_info = {
+                    'muscle_group': muscle_groups[0] if muscle_groups else 'unknown',
+                    'exercise_name': exercise,
+                    'difficulty': user_difficulty,
+                    'workout_type': user_workout_type
+                }
+                memory_tracker.store_exercise_memory(exercise_memory_info)
+        except Exception as e:
+            st.error(f"Error storing exercise memory: {str(e)}")
+
+    # ----- Define Tools -----
+    tools = [
+        # {'type': 'function',
+        #  'function':{
+        #     "name": "recommend_equipment_exercises",
+        #     "description": "Get exercise recommendations based on available equipment",
+        #     "parameters": {
+        #         "type": "object",
+        #         "properties": {
+        #             "equipment": {
+        #                 "type": "string",
+        #                 "description": "The exercise equipment to use",
+        #                 "enum": get_available_equipment()
+        #             },
+        #             "muscle_group": {
+        #                 "type": "string",
+        #                 "description": "Target muscle group for the exercise"
+        #             }
+        #         },
+        #         "required": ["equipment", "muscle_group"]
+        #     }
+        # }},
+        {'type' : 'function',
+        'function':{
+            "name": "get_tips",
+            "description": "Get best practices of creating a workout and exercising in general including exercises, sets, reps, duration, frequency, etc."
+        }}
+    ]
+
     difficulty = st.selectbox("Select your level of Experience", 
                             ['None', 'beginner', 'intermediate', 'expert'], 
                             placeholder = 'None')

@@ -142,7 +142,7 @@ def on_date_select(selected_date):
     else:
         st.write("No exercises recorded for this day.")
 
-if 'username' in st.session_state.username:
+if 'username' in st.session_state:
     st.title("View your workouts in a calendar")
 
     df = load_exercise_data()
