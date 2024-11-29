@@ -331,17 +331,20 @@ if 'username' in st.session_state:
             user_workout_type (str): Type of workout
         """
         try:
-            user_id = "default_user"
-            memory_tracker = ExerciseMemoryTracker(user_id)
-            
-            for exercise in workouts_list:
-                exercise_memory_info = {
-                    'muscle_group': muscle_groups[0] if muscle_groups else 'unknown',
-                    'exercise_name': exercise,
-                    'difficulty': user_difficulty,
-                    'workout_type': user_workout_type
-                }
-                memory_tracker.store_exercise_memory(exercise_memory_info)
+            if 'username' in st.session_state and st.session_state.username[0]:
+                username = st.session_state.username[0]
+                memory_tracker = ExerciseMemoryTracker(username)
+                
+                for exercise in workouts_list:
+                    exercise_memory_info = {
+                        'muscle_group': muscle_groups[0] if muscle_groups else 'unknown',
+                        'exercise_name': exercise,
+                        'difficulty': user_difficulty,
+                        'workout_type': user_workout_type
+                    }
+                    memory_tracker.store_exercise_memory(exercise_memory_info)
+            else:
+                st.error("No username found in session state")
         except Exception as e:
             st.error(f"Error storing exercise memory: {str(e)}")
 

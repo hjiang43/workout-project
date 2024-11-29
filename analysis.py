@@ -2,14 +2,22 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
 import altair as alt
-from workout import ExerciseMemoryTracker
+import json
 from openai import OpenAI
 
 def get_ai_analysis(df):
-    """Get AI analysis of workout history"""
+    """
+    Get AI analysis of workout history with time period consideration
+    
+    Args:
+        df: pandas DataFrame containing workout data
+    """
     try:
         client = OpenAI(api_key=st.secrets["API_KEY"])
         
+        start_date = df['date'].min().strftime('%Y-%m-%d')
+        end_date = df['date'].max().strftime('%Y-%m-%d')
+        total_days = (df['date'].max() - df['date'].min()).days + 1
         total_workouts = len(df)
         days_active = df['date'].nunique()
         muscle_groups = df['muscle_group'].value_counts().to_dict()
@@ -17,7 +25,7 @@ def get_ai_analysis(df):
         difficulty_levels = df['difficulty'].value_counts().to_dict()
         
         prompt = f"""
-        As a fitness expert, analyze the workout history:
+        As a fitness expert, analyze the workout history from {start_date} to {end_date} ({total_days} days):
         - Total exercises performed: {total_workouts}
         - Active days: {days_active}
         - Muscle groups targeted (with frequency): {muscle_groups}
@@ -27,9 +35,11 @@ def get_ai_analysis(df):
         Provide a brief analysis including:
         1. Overall consistency and commitment
         2. Balance of muscle groups (any imbalances?)
-        3. Progression in difficulty
-        4. Specific recommendations for improvement
+        3. Progression in difficulty over this time period
+        4. Specific recommendations for improvement based on this time period
         Keep the analysis concise but specific to this user's data.
+        Consider the time period when making your analysis - if it's a short period, focus on initial progress. 
+        If it's longer, focus on trends and progression.
         """
         
         response = client.chat.completions.create(
@@ -41,47 +51,52 @@ def get_ai_analysis(df):
             temperature=0.1
         )
         
-        return response.choices[0].message.content
+        analysis = response.choices[0].message.content
+        period_context = f"\nAnalysis Period: {start_date} to {end_date} ({total_days} days)"
+        
+        return period_context + "\n\n" + analysis
+        
     except Exception as e:
         return f"Unable to generate AI analysis: {str(e)}"
-    
-def load_exercise_data():
-    """Load and process exercise memory data"""
-    user_id = "default_user"  # We can expand this when we implement user authentication
-    memory_tracker = ExerciseMemoryTracker(user_id)
-    
-    # Get last xx days of exercise data, default is 30
-    memories = memory_tracker.get_exercise_memories(days=30)
-    if not memories:
-        st.warning("No exercise data found. Start working out to see analysis!")
+
+def load_workout_log(username):
+    """Load and process workout log history"""
+    log_file = f"file/workout_log_hist_{username}.json"
+    try:
+        with open(log_file, 'r') as f:
+            memories = json.load(f)
+            
+        if not memories:
+            st.warning("No workout data found. Start working out to see analysis!")
+            return None
+            
+        df = pd.DataFrame(memories)
+        df['date'] = pd.to_datetime(df['date'])
+        return df
+    except (FileNotFoundError, json.JSONDecodeError):
+        st.warning("No workout data found. Start working out to see analysis!")
         return None
-    
-    df = pd.DataFrame(memories)
-    df['timestamp'] = pd.to_datetime(df['timestamp'])
-    df['date'] = df['timestamp'].dt.date
-    return df
 
 def create_activity_heatmap(df):
     """Create a heatmap of exercise activity"""
     if df is None or df.empty:
         return None
-        
-    # exercises per day
+
     daily_activity = df.groupby('date').size().reset_index()
     daily_activity.columns = ['date', 'exercises']
-    
-    # heatmap
+
     chart = alt.Chart(daily_activity).mark_rect().encode(
-        x=alt.X('date:O', title='Date'),
+        x=alt.X('date:T', title='Date', timeUnit='yearmonthdate'),  # Changed to temporal type with timeUnit
         color=alt.Color('exercises:Q', 
                        scale=alt.Scale(scheme='blues'),
                        legend=alt.Legend(title='Exercises')),
     ).properties(
-        title='Exercise Activity Heatmap'
+        title='Exercise Activity Heatmap',
+        width=600,
+        height=100
     )
     
     return chart
-
 def create_workout_type_chart(df):
     """Create a chart showing workout type distribution"""
     if df is None or df.empty:
@@ -118,9 +133,13 @@ def create_muscle_group_chart(df):
 
 st.title("📊 Workout Analysis")
 if 'username' in st.session_state:
-    df = load_exercise_data()
+    username = st.session_state.username[0]
+    df = load_workout_log(username)
 
     if df is not None:
+        # Add start date to header
+        start_date = df['date'].min().strftime('%Y-%m-%d')
+        st.write(f"Tracking since: {start_date}")
         # AI Analysis
         st.subheader("WorkoutBot Analysis")
 
@@ -187,9 +206,13 @@ if 'username' in st.session_state:
             filtered_df = filtered_df[filtered_df['difficulty'] == selected_difficulty]
         
         # filtered data
+        display_columns = [
+            'date', 'exercise_name', 'muscle_group', 'workout_type', 'difficulty',
+            'lbs/bw_reps for first set', 'lbs/bw_reps for second set', 'lbs/bw_reps for third set'
+        ]
+        
         st.dataframe(
-            filtered_df[['date', 'exercise_name', 'muscle_group', 'workout_type', 'difficulty']]
-            .sort_values('date', ascending=False),
+            filtered_df[display_columns].sort_values('date', ascending=False),
             hide_index=True
         )
         

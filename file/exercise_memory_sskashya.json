@@ -1,0 +1,58 @@
+[
+  {
+    "muscle_group": "chest",
+    "exercise_name": "bench press",
+    "difficulty": "beginner",
+    "workout_type": "strength",
+    "timestamp": "2024-11-28T14:30:25.784045"
+  },
+  {
+    "muscle_group": "chest",
+    "exercise_name": "incline dumbbell press",
+    "difficulty": "beginner",
+    "workout_type": "strength",
+    "timestamp": "2024-11-28T14:30:25.786768"
+  },
+  {
+    "muscle_group": "chest",
+    "exercise_name": "push-ups",
+    "difficulty": "beginner",
+    "workout_type": "strength",
+    "timestamp": "2024-11-28T14:30:25.787113"
+  },
+  {
+    "muscle_group": "chest",
+    "exercise_name": "tricep dips",
+    "difficulty": "beginner",
+    "workout_type": "strength",
+    "timestamp": "2024-11-28T14:30:25.787923"
+  },
+  {
+    "muscle_group": "chest",
+    "exercise_name": "tricep extensions",
+    "difficulty": "beginner",
+    "workout_type": "strength",
+    "timestamp": "2024-11-28T14:30:25.788729"
+  },
+  {
+    "muscle_group": "chest",
+    "exercise_name": "close-grip bench press",
+    "difficulty": "beginner",
+    "workout_type": "strength",
+    "timestamp": "2024-11-28T14:30:25.789398"
+  },
+  {
+    "muscle_group": "chest",
+    "exercise_name": "chest press machine",
+    "difficulty": "expert",
+    "workout_type": "strength",
+    "timestamp": "2024-11-29T03:57:51.325910"
+  },
+  {
+    "muscle_group": "biceps",
+    "exercise_name": "preacher curl (fixed ez bar)",
+    "difficulty": "expert",
+    "workout_type": "powerlifting",
+    "timestamp": "2024-11-29T04:12:43.615799"
+  }
+]

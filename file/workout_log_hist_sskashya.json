@@ -1,66 +1,88 @@
 [
   {
-    "username": [
-      "sskashya"
-    ],
+    "username": "sskashya",
     "date": "2024-11-28",
     "exercise_name": "bench press",
     "muscle_group": "chest",
+    "workout_type": "strength",
+    "difficulty": "beginner",
     "lbs/bw_reps for first set": "",
     "lbs/bw_reps for second set": "",
     "lbs/bw_reps for third set": ""
   },
   {
-    "username": [
-      "sskashya"
-    ],
+    "username": "sskashya",
     "date": "2024-11-28",
     "exercise_name": "incline dumbbell press",
     "muscle_group": "chest",
+    "workout_type": "strength",
+    "difficulty": "beginner",
     "lbs/bw_reps for first set": "",
     "lbs/bw_reps for second set": "",
     "lbs/bw_reps for third set": ""
   },
   {
-    "username": [
-      "sskashya"
-    ],
+    "username": "sskashya",
     "date": "2024-11-28",
     "exercise_name": "push-ups",
     "muscle_group": "chest",
+    "workout_type": "strength",
+    "difficulty": "beginner",
     "lbs/bw_reps for first set": "",
     "lbs/bw_reps for second set": "",
     "lbs/bw_reps for third set": ""
   },
   {
-    "username": [
-      "sskashya"
-    ],
+    "username": "sskashya",
     "date": "2024-11-28",
     "exercise_name": "tricep dips",
     "muscle_group": "chest",
+    "workout_type": "strength",
+    "difficulty": "beginner",
     "lbs/bw_reps for first set": "",
     "lbs/bw_reps for second set": "",
     "lbs/bw_reps for third set": ""
   },
   {
-    "username": [
-      "sskashya"
-    ],
+    "username": "sskashya",
     "date": "2024-11-28",
     "exercise_name": "tricep extensions",
     "muscle_group": "chest",
+    "workout_type": "strength",
+    "difficulty": "beginner",
     "lbs/bw_reps for first set": "",
     "lbs/bw_reps for second set": "",
     "lbs/bw_reps for third set": ""
   },
   {
-    "username": [
-      "sskashya"
-    ],
+    "username": "sskashya",
     "date": "2024-11-28",
     "exercise_name": "close-grip bench press",
     "muscle_group": "chest",
+    "workout_type": "strength",
+    "difficulty": "beginner",
+    "lbs/bw_reps for first set": "",
+    "lbs/bw_reps for second set": "",
+    "lbs/bw_reps for third set": ""
+  },
+  {
+    "username": "sskashya",
+    "date": "2024-11-29",
+    "exercise_name": "chest press machine",
+    "muscle_group": "chest",
+    "workout_type": "strength",
+    "difficulty": "expert",
+    "lbs/bw_reps for first set": "",
+    "lbs/bw_reps for second set": "",
+    "lbs/bw_reps for third set": ""
+  },
+  {
+    "username": "sskashya",
+    "date": "2024-11-29",
+    "exercise_name": "preacher curl (fixed ez bar)",
+    "muscle_group": "biceps",
+    "workout_type": "powerlifting",
+    "difficulty": "expert",
     "lbs/bw_reps for first set": "",
     "lbs/bw_reps for second set": "",
     "lbs/bw_reps for third set": ""
