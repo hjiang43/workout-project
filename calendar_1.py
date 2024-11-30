@@ -142,6 +142,24 @@ def on_date_select(selected_date):
     else:
         st.write("No exercises recorded for this day.")
 
+def generate_workout_insights(df):
+    if df is None or df.empty:
+        return "No data available for analysis."
+
+    insights = []
+    recent_workouts = df.groupby("muscle_group").size().sort_values(ascending = False)
+    if not recent_workouts.empty:
+        most_frequent = recent_workouts.idxmax()
+        insights.append(f"💪 You've focused the most on your {most_frequent} recently. \n")
+
+    muscle_groups = df['muscle_group'].unique()
+    all_muscle_groups = ["Biceps", "Triceps", "Legs", "Back", "Chest", "Shoulders", "Abs"]
+    missing_groups = set(all_muscle_groups) - set(muscle_groups)
+    if missing_groups:
+        insights.append(f"🤔 Consider working on these neglected muscle groups: {', '.join(missing_groups)}.\n")
+    insights.append("🚀 Tip: Consistency is key! Keep balancing your routine for overall strength.")
+    return "\n".join(insights)
+
 if 'username' in st.session_state:
     st.title("View your workouts in a calendar")
 
@@ -158,5 +176,9 @@ if 'username' in st.session_state:
             })
 
         selected_date = stc.calendar(events=events, callbacks="dateClick")
+
+        st.write("📊 **Workout Insights**")
+        insights = generate_workout_insights(df)
+        st.write(insights)
 else:
     st.warning("Login to view your calendar")
