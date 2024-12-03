@@ -54,5 +54,12 @@
     "difficulty": "expert",
     "workout_type": "powerlifting",
     "timestamp": "2024-11-29T04:12:43.615799"
+  },
+  {
+    "muscle_group": "quadriceps",
+    "exercise_name": "squats",
+    "difficulty": "intermediate",
+    "workout_type": "plyometrics",
+    "timestamp": "2024-12-03T03:42:33.392208"
   }
 ]
