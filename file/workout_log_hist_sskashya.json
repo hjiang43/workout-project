@@ -86,5 +86,16 @@
     "lbs/bw_reps for first set": "",
     "lbs/bw_reps for second set": "",
     "lbs/bw_reps for third set": ""
+  },
+  {
+    "username": "sskashya",
+    "date": "2024-12-03",
+    "exercise_name": "squats",
+    "muscle_group": "quadriceps",
+    "workout_type": "plyometrics",
+    "difficulty": "intermediate",
+    "lbs/bw_reps for first set": "NA",
+    "lbs/bw_reps for second set": "NA",
+    "lbs/bw_reps for third set": "NA"
   }
 ]

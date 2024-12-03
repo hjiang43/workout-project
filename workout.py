@@ -561,7 +561,12 @@ if 'username' in st.session_state:
             - Ask for exercise recommendations and instructions
             - Ask for exercise frequency and intensity
             """)
-            
+            st.header("🦾 Muscle Groups Recommendation")
+            try:
+                muscle_list_df = pd.read_csv('file/muscle_list.csv')
+                st.dataframe(muscle_list_df, hide_index=True)
+            except Exception as e:
+                st.error(f"Error loading muscle list: {str(e)}")
             st.header("🏋️‍♂️ Available Equipment")
             equipment_df = pd.DataFrame(equipment_data)
             st.dataframe(equipment_df, hide_index=True)

@@ -77,26 +77,67 @@ def load_workout_log(username):
         st.warning("No workout data found. Start working out to see analysis!")
         return None
 
-def create_activity_heatmap(df):
-    """Create a heatmap of exercise activity"""
+def create_progression_chart(df):
+    """Create a line chart showing progression for specific exercises over time"""
     if df is None or df.empty:
         return None
-
-    daily_activity = df.groupby('date').size().reset_index()
-    daily_activity.columns = ['date', 'exercises']
-
-    chart = alt.Chart(daily_activity).mark_rect().encode(
-        x=alt.X('date:T', title='Date', timeUnit='yearmonthdate'),  # Changed to temporal type with timeUnit
-        color=alt.Color('exercises:Q', 
-                       scale=alt.Scale(scheme='blues'),
-                       legend=alt.Legend(title='Exercises')),
+        
+    # Extract exercise names for selection
+    exercise_list = sorted(df['exercise_name'].unique().tolist())
+    selected_exercise = st.selectbox('Select Exercise to Track', exercise_list)
+    
+    # Filter data for selected exercise
+    exercise_data = df[df['exercise_name'] == selected_exercise].copy()
+    
+    # Process the 'lbs/bw_reps' columns to extract numerical values
+    def extract_weight(value):
+        try:
+            # Extract the first number from the string
+            import re
+            numbers = re.findall(r'\d+', str(value))
+            return float(numbers[0]) if numbers else None
+        except:
+            return None
+    
+    # Process each set column
+    for set_num in [1, 2, 3]:
+        col_name = f'lbs/bw_reps for {["first", "second", "third"][set_num-1]} set'
+        exercise_data[f'set_{set_num}_weight'] = exercise_data[col_name].apply(extract_weight)
+    
+    # Prepare data for visualization
+    progression_data = pd.melt(
+        exercise_data,
+        id_vars=['date'],
+        value_vars=['set_1_weight', 'set_2_weight', 'set_3_weight'],
+        var_name='set',
+        value_name='weight'
+    )
+    
+    # Create multi-line chart
+    chart = alt.Chart(progression_data).mark_line(point=True).encode(
+        x=alt.X('date:T', 
+                title='Date',
+                axis=alt.Axis(format='%Y-%m-%d')),
+        y=alt.Y('weight:Q', 
+                title='Weight (lbs)'),
+        color=alt.Color('set:N', 
+                       title='Set Number',
+                       scale=alt.Scale(scheme='category10')),
+        tooltip=[
+            alt.Tooltip('date:T', title='Date', format='%Y-%m-%d'),
+            alt.Tooltip('set:N', title='Set'),
+            alt.Tooltip('weight:Q', title='Weight (lbs)')
+        ]
     ).properties(
-        title='Exercise Activity Heatmap',
-        width=600,
-        height=100
+        title=f'Weight Progression for {selected_exercise}',
+        width=700,
+        height=300
+    ).configure_legend(
+        orient='bottom'
     )
     
     return chart
+
 def create_workout_type_chart(df):
     """Create a chart showing workout type distribution"""
     if df is None or df.empty:
@@ -131,6 +172,62 @@ def create_muscle_group_chart(df):
     
     return chart
 
+def create_daily_workout_count_chart(df):
+    """Create a stacked area chart showing daily workout count by selected category"""
+    if df is None or df.empty:
+        return None
+
+    category = st.radio(
+        "Select Category for Analysis",
+        ["Workout Type", "Muscle Group", "Difficulty"],
+        horizontal=True,
+        key="daily_workout_category"
+    )
+
+    category_mapping = {
+        "Workout Type": "workout_type",
+        "Muscle Group": "muscle_group",
+        "Difficulty": "difficulty"
+    }
+    category_col = category_mapping[category]
+
+    start_date = df['date'].min()
+    end_date = datetime.now()
+    all_dates = pd.date_range(start=start_date, end=end_date)
+
+    daily_counts = df.groupby(['date', category_col]).size().unstack(fill_value=0)
+    daily_counts = daily_counts.reindex(all_dates, fill_value=0)
+
+    daily_data = daily_counts.stack().reset_index()
+    daily_data.columns = ['date', category_col, 'count']
+
+    chart = alt.Chart(daily_data).mark_area().encode(
+        x=alt.X('date:T', 
+                title='Date',
+                axis=alt.Axis(format='%Y-%m-%d')),
+        y=alt.Y('count:Q', 
+                title='Number of Exercises',
+                stack='zero'),
+        color=alt.Color(f'{category_col}:N', 
+                       title=category,
+                       scale=alt.Scale(scheme='category20')),
+        tooltip=[
+            alt.Tooltip('date:T', title='Date', format='%Y-%m-%d'),
+            alt.Tooltip(f'{category_col}:N', title=category),
+            alt.Tooltip('count:Q', title='Number of Exercises')
+        ]
+    ).properties(
+        title=f'Daily Exercise Count by {category}',
+        width=700,
+        height=300
+    ).configure_legend(
+        orient='bottom',
+        titleFontSize=12,
+        labelFontSize=11
+    )
+    
+    return chart
+
 st.title("📊 Workout Analysis")
 if 'username' in st.session_state:
     username = st.session_state.username[0]
@@ -158,13 +255,7 @@ if 'username' in st.session_state:
         with col3:
             st.metric("Days Active", df['date'].nunique())
         
-        # Activity heatmap
-        st.subheader("Exercise Activity Over Time")
-        activity_chart = create_activity_heatmap(df)
-        if activity_chart:
-            st.altair_chart(activity_chart, use_container_width=True)
-        
-        # Workout type and muscle group analysis
+
         col1, col2 = st.columns(2)
         
         with col1:
@@ -178,7 +269,18 @@ if 'username' in st.session_state:
             muscle_chart = create_muscle_group_chart(df)
             if muscle_chart:
                 st.altair_chart(muscle_chart, use_container_width=True)
-        
+
+        st.subheader("Daily Exercise Distribution")
+        daily_stack_chart = create_daily_workout_count_chart(df)
+        if daily_stack_chart:
+            st.altair_chart(daily_stack_chart, use_container_width=True)
+
+        st.subheader("Exercise Progression Tracking")
+        st.write("Track your strength progression for specific exercises over time")
+        progression_chart = create_progression_chart(df)
+        if progression_chart:
+            st.altair_chart(progression_chart, use_container_width=True)
+            
         # exercise history
         st.subheader("Exercise History")
         
