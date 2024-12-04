@@ -173,60 +173,17 @@ def create_muscle_group_chart(df):
     return chart
 
 def create_daily_workout_count_chart(df):
-    """Create a stacked area chart showing daily workout count by selected category"""
-    if df is None or df.empty:
+    """Create a stacked area chart for daily workouts."""
+    if df.empty:
         return None
-
-    category = st.radio(
-        "Select Category for Analysis",
-        ["Workout Type", "Muscle Group", "Difficulty"],
-        horizontal=True,
-        key="daily_workout_category"
-    )
-
-    category_mapping = {
-        "Workout Type": "workout_type",
-        "Muscle Group": "muscle_group",
-        "Difficulty": "difficulty"
-    }
-    category_col = category_mapping[category]
-
-    start_date = df['date'].min()
-    end_date = datetime.now()
-    all_dates = pd.date_range(start=start_date, end=end_date)
-
-    daily_counts = df.groupby(['date', category_col]).size().unstack(fill_value=0)
-    daily_counts = daily_counts.reindex(all_dates, fill_value=0)
-
+    category = st.radio("Select Category", ["Workout Type", "Muscle Group", "Difficulty"])
+    col = category.replace(" ", "_").lower()
+    daily_counts = df.groupby(['date', col]).size().unstack(fill_value=0)
     daily_data = daily_counts.stack().reset_index()
-    daily_data.columns = ['date', category_col, 'count']
-
-    chart = alt.Chart(daily_data).mark_area().encode(
-        x=alt.X('date:T', 
-                title='Date',
-                axis=alt.Axis(format='%Y-%m-%d')),
-        y=alt.Y('count:Q', 
-                title='Number of Exercises',
-                stack='zero'),
-        color=alt.Color(f'{category_col}:N', 
-                       title=category,
-                       scale=alt.Scale(scheme='category20')),
-        tooltip=[
-            alt.Tooltip('date:T', title='Date', format='%Y-%m-%d'),
-            alt.Tooltip(f'{category_col}:N', title=category),
-            alt.Tooltip('count:Q', title='Number of Exercises')
-        ]
-    ).properties(
-        title=f'Daily Exercise Count by {category}',
-        width=700,
-        height=300
-    ).configure_legend(
-        orient='bottom',
-        titleFontSize=12,
-        labelFontSize=11
-    )
-    
-    return chart
+    daily_data.columns = ['date', col, 'count']
+    return alt.Chart(daily_data).mark_area().encode(
+        x='date:T', y='count:Q', color=f'{col}:N'
+    ).properties(title=f'Daily Count by {category}')
 
 st.title("📊 Workout Analysis")
 if 'username' in st.session_state:

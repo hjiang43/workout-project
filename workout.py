@@ -429,7 +429,7 @@ if 'username' in st.session_state:
 
             # first llm call
             response = chat_completion_request(messages_to_pass, stream = False, tools = tools, tool_choice="auto")
-            st.write(response)
+            # st.write(response)
             response_message = response.choices[0].message
 
             # Call tool if tools needds to be called
@@ -481,7 +481,7 @@ if 'username' in st.session_state:
 
             messages_to_pass.pop(0) # deleating the first SM
             messages_to_pass.insert(0,system_message)
-            st.write(messages_to_pass)
+            # st.write(messages_to_pass)
 
             # Get stream response
             stream = chat_completion_request(messages_to_pass, stream = False)
@@ -497,7 +497,7 @@ if 'username' in st.session_state:
                         Youtube Links for exercises recommended: {yt_urls}
                         Apply this to the workouts you recommend.                                      
         '''})
-            st.write(workouts)
+            # st.write(workouts)
 
             stream = chat_completion_request(messages_to_pass)
 
