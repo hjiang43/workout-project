@@ -185,8 +185,33 @@ class Search_Response:
         for item in items:
             search_result = Search_Result(item)
             self.search_results.append(search_result)
-
+def load_workout_history(username):
+    """
+    Simply load the workout history JSON file for a user.
+    Returns None if file doesn't exist.
+    """
+    try:
+        log_file = f"file/workout_log_hist_{username}.json"
+        with open(log_file, 'r') as f:
+            workout_logs = json.load(f)
+        return workout_logs
+    except FileNotFoundError:
+        return None
 if 'username' in st.session_state:
+    workout_logs = load_workout_history(st.session_state.username[0])
+    
+    history_info = ""
+    if workout_logs:
+        history_info = "User has previous workout logs available. If they ask about their workout history, you can check the logs."
+    
+    system_message = {'role':'system',
+                    'content':\
+                    f"""
+                    You are a knowledgeable and friendly fitness instructor. 
+                    Keep responses concise and engaging.
+                    
+                    {history_info}
+                    """}
     
     # st.write(st.session_state.username)
     st.title("💪 WorkoutBot")
@@ -390,15 +415,12 @@ if 'username' in st.session_state:
         if "messages" not in st.session_state:
             st.session_state.messages = []
 
-
         youtube_api_key = st.secrets['YT_API_KEY']
         if 'youtube_client' not in st.session_state:
             st.session_state.youtube_client = googleapiclient.discovery.build(
                 serviceName = 'youtube',
                 version = 'v3',
                 developerKey= youtube_api_key)
-
-
 
         for msg in st.session_state.messages:
             st.chat_message(msg['role']).write(msg['content'])
@@ -414,7 +436,7 @@ if 'username' in st.session_state:
             st.chat_message("user").write(prompt)
             st.session_state.messages.append({"role": "user", "content": prompt})
 
-
+            workout_logs = load_workout_history(st.session_state.username[0])
             # conversation history buffer (maybe later)
             messages_to_pass = st.session_state.messages.copy()
 
@@ -426,7 +448,14 @@ if 'username' in st.session_state:
                         """}
 
             messages_to_pass.insert(0,system_message)
-
+            if workout_logs:
+                workout_history_message = {'role': 'system',
+                                        'content':\
+                                        f"""
+                                        User's workout history is available in these logs: {workout_logs}
+                                        If they ask about their workout history, you can check these logs and provide information about their exercises, progress, and patterns.
+                                        """}
+                messages_to_pass.insert(1, workout_history_message)
             # first llm call
             response = chat_completion_request(messages_to_pass, stream = False, tools = tools, tool_choice="auto")
             # st.write(response)

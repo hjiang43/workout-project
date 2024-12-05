@@ -8,22 +8,43 @@ import os
 
 def load_exercise_data(username):
     """
-    Load and process exercise memory data for a specific user.
+    Load and process exercise data directly from workout log history.
     
     Args:
         username (str): Username from session state.
     """
-    memory_tracker = ExerciseMemoryTracker(username)
-    
-    # Get last xx days of exercise data, default is 30
-    memories = memory_tracker.get_exercise_memories(days=30)
-    if not memories:
+    try:
+        log_file = f"file/workout_log_hist_{username}.json"
+
+        with open(log_file, 'r') as f:
+            memories = json.load(f)
+        
+        if not memories:
+            return None
+
+        df = pd.DataFrame(memories)
+
+        df['date'] = pd.to_datetime(df['date'])
+
+        required_columns = [
+            'username', 'date', 'exercise_name', 'muscle_group', 
+            'workout_type', 'difficulty', 
+            'lbs/bw_reps for first set',
+            'lbs/bw_reps for second set', 
+            'lbs/bw_reps for third set'
+        ]
+        
+        for col in required_columns:
+            if col not in df.columns:
+                df[col] = "NA"
+                
+        return df
+        
+    except FileNotFoundError:
         return None
-    
-    df = pd.DataFrame(memories)
-    df['timestamp'] = pd.to_datetime(df['timestamp'])
-    df['date'] = df['timestamp'].dt.date
-    return df
+    except Exception as e:
+        st.error(f"Error loading workout data: {str(e)}")
+        return None
 
 def create_editable_log(df, username, muscle_list):
     """Create an editable workout log interface"""

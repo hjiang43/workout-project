@@ -59,8 +59,14 @@ def get_ai_analysis(df):
     except Exception as e:
         return f"Unable to generate AI analysis: {str(e)}"
 
-def load_workout_log(username):
-    """Load and process workout log history"""
+def load_workout_log(username, time_period='all'):
+    """
+    Load and process workout log history with time period filtering
+    
+    Args:
+        username (str): Username to load data for
+        time_period (str): 'all', '30d', or '7d' for filtering
+    """
     log_file = f"file/workout_log_hist_{username}.json"
     try:
         with open(log_file, 'r') as f:
@@ -72,6 +78,16 @@ def load_workout_log(username):
             
         df = pd.DataFrame(memories)
         df['date'] = pd.to_datetime(df['date'])
+        
+        # Filter based on time period
+        if time_period != 'all':
+            today = datetime.now()
+            if time_period == '30d':
+                cutoff_date = today - timedelta(days=30)
+            elif time_period == '7d':
+                cutoff_date = today - timedelta(days=7)
+            df = df[df['date'] >= cutoff_date]
+            
         return df
     except (FileNotFoundError, json.JSONDecodeError):
         st.warning("No workout data found. Start working out to see analysis!")
@@ -188,7 +204,20 @@ def create_daily_workout_count_chart(df):
 st.title("📊 Workout Analysis")
 if 'username' in st.session_state:
     username = st.session_state.username[0]
-    df = load_workout_log(username)
+
+    time_period = st.selectbox(
+        "Select Time Period",
+        options=['All Time', 'Last 30 Days', 'Last 7 Days'],
+        key='time_period'
+    )
+
+    period_param = {
+        'All Time': 'all',
+        'Last 30 Days': '30d',
+        'Last 7 Days': '7d'
+    }[time_period]
+
+    df = load_workout_log(username, period_param)
 
     if df is not None:
         # Add start date to header
